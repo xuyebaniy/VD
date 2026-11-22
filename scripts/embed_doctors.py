@@ -29,7 +29,13 @@ encoded=(encoded.replace("&",r"\u0026").replace("<",r"\u003c")
 stamp=json.dumps(catalog.get("updated") or "",ensure_ascii=False)
 needle=re.compile(r"(?m)^const DOCTORS=\[[^\n]*\];$")
 assert len(needle.findall(html))==1,"Expected a single doctor roster in original index"
+# A checked-in or previously built shell already has this generated constant.
+# Replace its declaration as well as the roster so repeated builds cannot create
+# duplicate lexical declarations and prevent the entire inline script from running.
+revision=re.compile(r"(?m)^const VD_VERIFIED_AT=[^\r\n]*;[ \t]*(?:\r?\n|$)")
+html=revision.sub("",html)
 html=needle.sub(lambda m:"const VD_VERIFIED_AT="+stamp+";\nconst DOCTORS="+encoded+";",html,count=1)
+assert len(revision.findall(html))==1,"Expected exactly one catalog revision declaration"
 assert len(html)>1000000, "Original artwork missing: refusing to replace the design"
 index_path.write_text(html,encoding="utf-8")
 print("Embedded",len(items),"physicians,",sum(bool(d.get("photo")) for d in items),

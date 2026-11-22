@@ -52,6 +52,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -113,7 +116,9 @@ jobs:
             assets/doctors/
           key: vd-public-doctors-${{ github.run_id }}
       - name: Embed verified doctors in original PWA
-        run: python scripts/embed_doctors.py
+        run: |
+          python3 tests/embed-doctors.py
+          python scripts/embed_doctors.py
       - name: Validate cabinet scripts and stage public files only
         run: |
           node --check cabinet-demo.js
@@ -122,6 +127,32 @@ jobs:
           node --check pwa-updates.js
           node --check sw.js
           python scripts/stage_public.py
+      - name: Install generated artifact test runtime
+        run: npm install --prefix "$RUNNER_TEMP/vd-dom" --no-audit --no-fund --ignore-scripts jsdom@26.1.0
+      - name: Verify generated Pages artifact before upload
+        env:
+          NODE_PATH: ${{ runner.temp }}/vd-dom/node_modules
+          VD_SITE_ROOT: ${{ github.workspace }}/_site
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const { JSDOM } = require('jsdom');
+          const filename = path.join(process.env.VD_SITE_ROOT, 'index.html');
+          const dom = new JSDOM(fs.readFileSync(filename, 'utf8'));
+          const scripts = [...dom.window.document.querySelectorAll('script:not([src])')]
+            .filter(script => !script.type || /^(?:text|application)\/(?:java|ecma)script$/i.test(script.type))
+            .map(script => script.textContent);
+          dom.window.close();
+          assert.ok(scripts.length, 'Generated index.html must contain executable inline scripts');
+          scripts.forEach((code, index) => new vm.Script(code, { filename: `${filename}:inline-${index + 1}` }));
+          // Separate classic scripts share global lexical bindings in the page.
+          new vm.Script(scripts.join('\n;\n'), { filename: `${filename}:all-inline-scripts` });
+          console.log(`Generated artifact: ${scripts.length} inline scripts parse successfully`);
+          JS
+          node tests/demo-dom.cjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

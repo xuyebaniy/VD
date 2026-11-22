@@ -36,10 +36,10 @@ if('serviceWorker' in navigator){
  navigator.serviceWorker.addEventListener('controllerchange',function(){
   if(window.VDCabinet?.isActive())return;
   if(reload)return;
-  try{if(sessionStorage.getItem('vd-reload-demo-v15')==='1')return;}catch(_){}
+  try{if(sessionStorage.getItem('vd-reload-demo-v16')==='1')return;}catch(_){}
   const input=document.activeElement;
   if(input&&/^(INPUT|TEXTAREA)$/i.test(input.tagName))return;
-  reload=true;try{sessionStorage.setItem('vd-reload-demo-v15','1');}catch(_){}
+  reload=true;try{sessionStorage.setItem('vd-reload-demo-v16','1');}catch(_){}
   window.location.reload();
  });
 }

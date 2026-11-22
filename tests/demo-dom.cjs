@@ -15,7 +15,7 @@ try { jsdom = require('jsdom'); } catch {
 }
 const { JSDOM, ResourceLoader, VirtualConsole } = jsdom;
 const T = require('./demo-ui.cjs');
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(process.env.VD_SITE_ROOT || path.join(__dirname, '..'));
 const instances = new Set();
 
 function sourceFile(url) {

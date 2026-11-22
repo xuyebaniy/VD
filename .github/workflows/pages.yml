@@ -83,6 +83,8 @@ jobs:
             data/doctors.json
             assets/doctors/
           key: vd-public-doctors-${{ github.run_id }}
+      - name: Embed verified doctors in original PWA
+        run: python scripts/embed_doctors.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

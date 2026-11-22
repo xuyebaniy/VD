@@ -808,10 +808,12 @@ async function vdStartSync(){
   if(!list.length)throw new Error('empty catalog');
   DOCTORS.splice(0,DOCTORS.length,...list);
   if(!DOCTORS.some(d=>d.id===S.doctorId)){S.doctorId=DOCTORS[0].id;S.booking.doctorId=S.doctorId}
-  VD_LIVE.catalogStatus='connected';
- }catch(e){VD_LIVE.catalogStatus='unavailable';console.warn('VD Bitrix catalog:',e.message)}
- try{const r=await vdFetchJson('services.php');VD_LIVE.services=(r.services||[]).filter(s=>s&&s.name);VD_LIVE.servicesStatus='connected'}catch{VD_LIVE.servicesStatus='unavailable'}
- try{const st=await vdFetchJson('status.php');VD_LIVE.session=st;VD_LIVE.bookingMode='external'}catch{VD_LIVE.bookingMode='external'}
+  VD_LIVE.catalogStatus='connected';VD_LIVE.syncedAt=Date.now();VD_LIVE.cachedFallback=false;
+ }catch(e){if(VD_LIVE.syncedAt){VD_LIVE.catalogStatus='connected';VD_LIVE.cachedFallback=true;}else{VD_LIVE.catalogStatus='unavailable';}console.warn('VD public catalog:',e.message)}
+ if(!VD_CFG.staticData){
+  try{const r=await vdFetchJson('services.php');VD_LIVE.services=(r.services||[]).filter(s=>s&&s.name);VD_LIVE.servicesStatus='connected'}catch{VD_LIVE.servicesStatus='unavailable'}
+  try{const st=await vdFetchJson('status.php');VD_LIVE.session=st;VD_LIVE.bookingMode='external'}catch{VD_LIVE.bookingMode='external'}
+ }
  // Never import the prototype's patient list and demo appointments into a real clinic account.
  S.bookings=[];
  if(['home','doctors','doctor','booking','services','profile','bookings'].includes(S.page))render({keepScroll:true});
@@ -995,9 +997,9 @@ document.addEventListener('click',e=>{
  if(btn&&state.active)setTimeout(()=>{if(realId())loadMonth(true)},30);
 },true);
 window.addEventListener('online',()=>{if(state.active&&realId())loadMonth(true)});
-window.addEventListener('hashchange',()=>{if(state.active&&['garden','garden-day'].includes(S.page)&&realId()&&state.month!==S.gardenMonth)loadMonth(true)});
-boot();
+window.addEventListener('hashchange',()=>{if(state.active&&['garden','garden-day'].includes(S.page)&&realId()&&state.month!==S.gardenMonth)loadMonth(true)});boot();
 })();
+
 </script>
 
 <script>
@@ -1032,7 +1034,7 @@ boot();
     .vd-schedule-page h3{font-size:17px;margin:0 0 6px}
     .vd-schedule-page p{font-size:12px;line-height:1.5;color:#4d6859}
     .vd-call-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-    .vd-call-row a{display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;border-radius:16px;min-height:46px;padding:10px 12px;font-size:12px;font-weight:700;flex:1;background:#dff1d0;color:#1e673a}
+    .vd-call-row a{display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;border-radius:16px;min-height:46px;padding:10px 6px;font-size:11px;font-weight:700;white-space:nowrap;flex:1;background:#dff1d0;color:#1e673a}
     .vd-call-row a:first-child{background:linear-gradient(#77c441,#4b9e28);color:white}
     .vd-day-note{color:#5a6b5e;font-size:11px;margin:7px 0}
     @media(max-width:360px){.vd-source{flex-wrap:wrap}.vd-refresh{width:100%}}
@@ -1061,7 +1063,7 @@ boot();
     const synced=d.catalogStatus==='connected';
     let when='';
     if(d.updated){try{when=new Date(d.updated).toLocaleString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' МСК';}catch(e){}}
-    const line=synced?(navigator.onLine?'Каталог с vash-doc.ru':'Сохранённый каталог (без интернета)'):(d.catalogStatus==='loading'?'Получаем список врачей':'Нет подтверждённого каталога — проверьте интернет');
+    const line=synced?(d.cachedFallback||!navigator.onLine?'Сохранённый каталог (нет связи)':'Каталог с vash-doc.ru'):(d.catalogStatus==='loading'?'Получаем список врачей':'Нет подтверждённого каталога — проверьте интернет');
     return '<div class="vd-source" role="status"><div><strong>'+escapeHTML(line)+'</strong><span>'+(when?'Обновлено '+escapeHTML(when):'Автоматическая проверка каждые 6 часов')+'</span></div><button class="vd-refresh" data-vd-refresh="1" type="button">↻ Обновить</button></div>';
   }
   const originalCard = catalogCard;

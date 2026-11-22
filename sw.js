@@ -1,7 +1,7 @@
 /* Vash Doctor PWA: same install/scope, offline app shell and fresh public clinic directory. */
-const VERSION='vd-shell-2026-11-22-visual-v8';
+const VERSION='vd-shell-2026-11-22-visual-v9';
 const DATA_CACHE='vd-public-directory-v3';
-const PRECACHE=['./','./index.html','./manifest.webmanifest','./icons/app-icon.svg','./icons/apple-touch-icon.png','./icons/icon-192.png','./icons/icon-512.png'];
+const PRECACHE=['./','./index.html','./manifest.webmanifest','./icons/app-icon.svg','./icons/apple-touch-icon.png','./icons/icon-192.png','./icons/icon-512.png','./data/doctors.json'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(VERSION).then(async cache=>{
     const results=await Promise.allSettled(PRECACHE.map(path=>cache.add(path)));

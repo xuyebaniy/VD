@@ -1,10 +1,12 @@
-name: Publish original VD app and refresh doctors
+name: Refresh doctors and publish Vash Doctor PWA
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "README.md"
   workflow_dispatch:
   schedule:
-    - cron: '17 */6 * * *'
+    - cron: "17 */3 * * *"
 permissions:
   contents: read
   pages: write
@@ -13,29 +15,60 @@ concurrency:
   group: pages
   cancel-in-progress: false
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - name: Refresh public doctor data
+          python-version: "3.12"
+      - uses: actions/cache/restore@v4
+        with:
+          path: data/doctors.json
+          key: vd-public-doctors-${{ github.run_id }}
+          restore-keys: |
+            vd-public-doctors-
+      - name: Fetch published doctors from clinic
+        id: sync
+        shell: bash
         run: |
-          python -m pip install --quiet requests beautifulsoup4 Pillow
-          python scripts/sync_doctors.py
+          python -m pip install --quiet requests beautifulsoup4 pillow
+          if python scripts/sync_doctors.py; then
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Website unavailable: checking the last verified directory"
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          obj=json.loads(Path('data/doctors.json').read_text(encoding='utf-8'))
+          if not obj.get('source','').startswith('https://vash-doc.ru/specialists/') or len(obj.get('doctors',[]))<10:
+              raise SystemExit('No previously verified doctor catalog - refusing to deploy stale prototype')
+          print('Using verified cached catalog with',len(obj['doctors']),'doctors')
+          PY
+          fi
           python - <<'PY'
           from PIL import Image
           src=Image.open('icons/apple-touch-icon.png').convert('RGBA')
           for size in (192,512):
               src.resize((size,size),Image.Resampling.LANCZOS).save(f'icons/icon-{size}.png')
           PY
+      - uses: actions/cache/save@v4
+        if: steps.sync.outputs.updated == 'true'
+        with:
+          path: data/doctors.json
+          key: vd-public-doctors-${{ github.run_id }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Allow GitHub artifact index to settle
+        run: sleep 12
       - id: deployment
         uses: actions/deploy-pages@v4

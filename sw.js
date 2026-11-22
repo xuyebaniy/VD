@@ -1,1 +1,61 @@
-const VERSION='vd-pwa-2026-11-22-v2';const SHELL='vd-shell-'+VERSION;const DATA='vd-data-v2';const CORE=['./','./index.html','./pwa-extras.js','./manifest.webmanifest','./icons/app-icon.svg','./icons/apple-touch-icon.png','./icons/icon-192.png','./icons/icon-512.png','./data/doctors.json'];self.addEventListener('install',e=>e.waitUntil(caches.open(SHELL).then(async c=>{await Promise.all(CORE.map(u=>c.add(u).catch(err=>console.warn('Missing offline asset:',u,err))));await self.skipWaiting()})));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('vd-shell-')&&k!==SHELL).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const req=e.request;if(req.method!=='GET')return;const url=new URL(req.url);if(url.origin!==self.location.origin)return;if(url.pathname.includes('/data/')){e.respondWith(caches.open(DATA).then(async c=>{try{const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort(),4500);try{const r=await fetch(req,{signal:ctl.signal,cache:'no-store'});if(r.ok){await c.put(req,r.clone());return r}throw Error('Data unavailable')}finally{clearTimeout(timer)}}catch{return await c.match(req)||await caches.match(req)||new Response('{"ok":false,"doctors":[]}',{headers:{'Content-Type':'application/json'}})}}));return}if(req.mode==='navigate'){e.respondWith((async()=>{try{const r=await fetch(req,{cache:'no-store'});if(r.ok){(await caches.open(SHELL)).put('./index.html',r.clone());return r}throw Error('offline')}catch{return await caches.match('./index.html')||await caches.match('./')||new Response('Приложение недоступно без первоначального подключения',{headers:{'Content-Type':'text/plain;charset=utf-8'}})}})());return}e.respondWith(caches.match(req).then(c=>c||fetch(req).then(r=>{if(r.ok&&r.type==='basic')caches.open(SHELL).then(x=>x.put(req,r.clone()));return r})))});
+/* Vash Doctor PWA: same install/scope, offline app shell and fresh public clinic directory. */
+const VERSION='vd-shell-2026-11-22-visual-v8';
+const DATA_CACHE='vd-public-directory-v3';
+const PRECACHE=['./','./index.html','./manifest.webmanifest','./icons/app-icon.svg','./icons/apple-touch-icon.png','./icons/icon-192.png','./icons/icon-512.png'];
+self.addEventListener('install',event=>{
+  event.waitUntil(caches.open(VERSION).then(async cache=>{
+    const results=await Promise.allSettled(PRECACHE.map(path=>cache.add(path)));
+    if(!results.some(r=>r.status==='fulfilled'))throw new Error('Offline shell not cached');
+    await self.skipWaiting();
+  }));
+});
+self.addEventListener('activate',event=>{
+  event.waitUntil((async()=>{
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(k=>(k.startsWith('vd-shell-')||k.startsWith('vd-original-')||k.startsWith('vd-public-directory-'))&&k!==VERSION&&k!==DATA_CACHE).map(k=>caches.delete(k)));
+    await self.clients.claim();
+  })());
+});
+async function networkFirst(request,cacheName,timeoutMs){
+  const cache=await caches.open(cacheName);
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),timeoutMs);
+  try{
+    const response=await fetch(request,{signal:ctl.signal,cache:'no-store'});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    cache.put(request,response.clone()).catch(()=>{});
+    return response;
+  }catch(error){
+    const prior=await cache.match(request,{ignoreSearch:true});
+    if(prior)return prior;
+    throw error;
+  }finally{clearTimeout(timer)}
+}
+self.addEventListener('fetch',event=>{
+  const req=event.request;
+  if(req.method!=='GET')return;
+  const url=new URL(req.url);
+  if(url.origin!==self.location.origin)return; // Do not cache credentials, external booking or patient data.
+  if(url.pathname.includes('/data/')){
+    event.respondWith(networkFirst(req,DATA_CACHE,5500).catch(async()=>{
+      const prior=await caches.match(req,{ignoreSearch:true});
+      return prior||new Response('{"ok":false,"doctors":[]}',{headers:{'Content-Type':'application/json; charset=utf-8'},status:503});
+    }));
+    return;
+  }
+  if(req.mode==='navigate'){
+    event.respondWith(networkFirst(req,VERSION,5000).catch(async()=>{
+      const fallback=await caches.match('./index.html')||await caches.match('./');
+      return fallback||new Response('Откройте приложение один раз с интернетом',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}});
+    }));
+    return;
+  }
+  event.respondWith((async()=>{
+    const cache=await caches.open(VERSION);
+    const prior=await cache.match(req);
+    if(prior)return prior;
+    const response=await fetch(req);
+    if(response.ok&&response.type==='basic')cache.put(req,response.clone()).catch(()=>{});
+    return response;
+  })());
+});

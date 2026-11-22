@@ -20,3 +20,13 @@ for url in urls:
    snippet=re.sub(r'\s+',' ',r.text[max(0,match.start()-160):match.start()+290])
    print("BOOKING_FRAGMENT",snippet[:420],flush=True)
  except Exception as e:print("PROBE_ERROR",url,type(e).__name__,str(e)[:180],flush=True)
+
+# Medihost public widget uses a cross-origin POST with credentials.
+# Check allowed origin and whether the widget enforces the clinic domain.
+endpoint="https://api.medihost.ru/v2/ScheduleFrame/index/48196?resource_id=&group_id=0&is_orders=0&one_group=0&info_table=0&info_table_days=0"
+for host in ("xuyebaniy.github.io","vash-doc.ru"):
+ try:
+  origin="https://"+host
+  r=requests.post(endpoint,data={"site":origin,"domain":host},headers={"Origin":origin,"Referer":origin+"/"},timeout=20)
+  print("MEDIHOST_POST",host,r.status_code,len(r.content),"ACAO",r.headers.get("Access-Control-Allow-Origin"),"ACAC",r.headers.get("Access-Control-Allow-Credentials"),"HEAD",re.sub(r"\s+"," ",r.text[:260]),flush=True)
+ except Exception as exc:print("MEDIHOST_ERROR",host,str(exc)[:120],flush=True)

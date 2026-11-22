@@ -92,5 +92,31 @@ if('serviceWorker' in navigator){
   window.location.reload();
  });
 }
+// Small in-app refresh control without changing the approved card design.
+const previousDoctorPage=PAGES.doctors;
+if(typeof previousDoctorPage==='function')PAGES.doctors=function(){
+ return previousDoctorPage.apply(this,arguments)+
+ '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 4px">'+
+ '<span class="micro">Список врачей синхронизируется с vash-doc.ru</span>'+
+ '<button class="linkmore" type="button" data-action="vd-refresh-doctors">Обновить</button></div>';
+};
+document.addEventListener('click',async function(event){
+ const control=event.target.closest('[data-action="vd-refresh-doctors"]');
+ if(!control)return;
+ control.disabled=true;
+ try{
+  if(typeof vdStartSync==='function')await vdStartSync();
+  if(typeof snack==='function')snack(VD_LIVE.catalogStatus==='connected'?'Список врачей обновлён':'Показана сохранённая версия каталога');
+ }finally{control.disabled=false}
+});
+let lastForegroundSync=Date.now();
+function refreshOnForeground(){
+ if(document.visibilityState!=='visible'||Date.now()-lastForegroundSync<3*60*1000)return;
+ lastForegroundSync=Date.now();
+ if(typeof vdStartSync==='function'&&navigator.onLine!==false)vdStartSync().catch(console.warn);
+ if('serviceWorker' in navigator)navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{});
+}
+document.addEventListener('visibilitychange',refreshOnForeground);
+window.addEventListener('pageshow',refreshOnForeground);
 if(S.page==='booking'||S.page==='chat')render({keepScroll:true});
 })();

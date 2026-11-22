@@ -1,5 +1,5 @@
 /* Vash Doctor PWA: same install/scope, offline app shell and fresh public clinic directory. */
-const VERSION='vd-shell-2026-11-22-live-schedule-v12';
+const VERSION='vd-shell-2026-11-22-live-schedule-v13';
 const DATA_CACHE='vd-public-directory-v5';
 const PRECACHE=['./','./index.html','./manifest.webmanifest','./icons/app-icon.svg','./icons/apple-touch-icon.png','./icons/icon-192.png','./icons/icon-512.png','./data/doctors.json','./booking-widget.html','./pwa-updates.js'];
 self.addEventListener('install',event=>{
@@ -48,6 +48,11 @@ self.addEventListener('fetch',event=>{
       const prior=await caches.match(req,{ignoreSearch:true});
       return prior||new Response('{"ok":false,"doctors":[]}',{headers:{'Content-Type':'application/json; charset=utf-8'},status:503});
     }));
+    return;
+  }
+  // The booking shell and update script must not be pinned to a stale version.
+  if(url.pathname.endsWith('/pwa-updates.js')){
+    event.respondWith(networkFirst(req,VERSION,5000).catch(()=>caches.match(req)));
     return;
   }
   if(req.mode==='navigate'){

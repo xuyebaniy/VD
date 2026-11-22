@@ -1,0 +1,106 @@
+/* Demo parent cabinet: original clinic palette and illustrations. */
+.vd-top-call{text-decoration:none;background:linear-gradient(145deg,#e9ffcb,#c7ee9b);color:#285f26}
+.pc-auth .page-title{font-size:28px;line-height:1.08;max-width:245px}
+.pc-auth-intro{position:relative;min-height:177px;padding:21px 17px;border:2px solid white;border-radius:29px;overflow:hidden;margin:10px 0 15px;background:linear-gradient(115deg,#f3fbd2,#e3f4b4 60%,#ffd4a2);box-shadow:var(--shadow)}
+.pc-auth-intro>div{position:relative;z-index:2;max-width:62%}
+.pc-auth-intro h1{font-size:25px;letter-spacing:-.6px;line-height:1.09;margin:9px 0}
+.pc-auth-intro p{font-size:12px;line-height:1.45;margin:0;color:#4b6551;max-width:190px}
+.pc-auth-intro>img{position:absolute;right:-28px;bottom:-9px;height:178px;width:210px;object-fit:cover;object-position:80% 50%;mask-image:linear-gradient(to right,transparent,#000 35%);-webkit-mask-image:linear-gradient(to right,transparent,#000 35%)}
+.pc-auth-form{padding:19px 17px}
+.pc-auth-form h2{font-size:20px;line-height:1.2;margin:0 0 7px;letter-spacing:-.4px}
+.pc-label{display:block;font-size:13px;font-weight:600;margin:17px 0 7px}
+.pc-input{display:block;width:100%;border:1.5px solid #dce5ce;border-radius:17px;background:#fff;color:#173e2d;font:inherit;font-size:16px;min-height:51px;padding:12px 13px;outline-offset:3px}
+.pc-input:focus{border-color:#6bb83b}
+.pc-input:disabled{background:#f2f4ed;color:#6c776c}
+.pc-code{font-size:27px;letter-spacing:.42em;text-align:center;font-variant-numeric:tabular-nums;padding-right:5px}
+.pc-help{font-size:12px!important;line-height:1.5!important;color:#6c776c;margin:10px 0 0!important}
+.pc-status{border-radius:17px;padding:12px 13px;margin:13px 0 0;font-size:12px;line-height:1.5;background:#f0f7e8;color:#426143}
+.pc-status.error{background:#fff1e9;color:#9b412e}
+.pc-status.notice{background:#fff7e6;color:#765d28}
+.pc-status:empty{display:none}
+.pc-status .linkmore{display:inline;padding:0;margin-top:6px;white-space:normal}
+.pc-auth .btn-wide{margin-top:13px;min-height:49px;font-size:14px}
+.pc-auth .pc-guest{display:block;width:100%;border:0;background:none;color:#457b35;padding:17px 8px 5px;font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:4px}
+.pc-benefits{display:flex;justify-content:center;gap:15px;flex-wrap:wrap;font-size:11px;color:#67785f;margin:16px 3px 5px}
+.pc-benefits span{display:flex;align-items:center;gap:4px}
+.pc-benefits .ic{width:16px;height:16px}
+.pc-row{display:flex;align-items:center;gap:10px}
+.pc-between{justify-content:space-between}
+.pc-row .btn{flex:1}
+.pc-row .btn+.btn{margin-left:0}
+.pc-account{margin:12px 0;padding:13px 15px;border:1.5px solid #fff;background:linear-gradient(120deg,#effbd9,#fff8eb);border-radius:23px;box-shadow:var(--shadow)}
+.pc-account small{font-size:11px;display:block;color:#687763;margin-bottom:3px}
+.pc-account strong{font-size:14px}
+.pc-account .circle-btn{width:37px;height:37px}
+.pc-empty{text-align:center;padding:26px 19px;margin:15px 0}
+.pc-empty>img{width:86px;height:86px;object-fit:contain;margin-bottom:8px}
+.pc-empty>.ic{width:37px;height:37px;color:#73af38;margin-bottom:9px}
+.pc-empty h2,.pc-empty h3{font-size:19px;margin:0 0 9px;line-height:1.2}
+.pc-empty p{font-size:13px;line-height:1.5;color:#667763;margin:0}
+.pc-empty .btn{margin-top:17px}
+.pc-kid{border:2px solid white;background:linear-gradient(115deg,#fff,#f7ffe9);border-radius:25px;padding:15px;box-shadow:var(--shadow);margin:11px 0}
+.pc-kid.selected{border-color:#8ec353;box-shadow:0 7px 21px #6b8a3620}
+.pc-kid-main{display:flex;align-items:center;gap:12px;border:0;background:none;padding:0;text-align:left;width:100%;color:var(--forest)}
+.pc-kid-avatar{width:48px;height:48px;display:grid;place-items:center;border-radius:18px;background:linear-gradient(135deg,#effbd6,#d7eda7);flex:none}
+.pc-kid:nth-of-type(even) .pc-kid-avatar{background:linear-gradient(135deg,#ffefc3,#ffdaa5)}
+.pc-kid-main strong{display:block;font-size:16px;overflow-wrap:anywhere}
+.pc-kid-main small{display:block;font-size:12px;line-height:1.4;color:#6c7769;margin-top:3px}
+.pc-kid .pc-pill{display:inline-block;font-size:10px;margin:11px 0 0;color:#65734b;background:#f1f6e5;padding:5px 9px;border-radius:11px}
+.pc-kid .pc-row{margin-top:12px}
+.pc-kid .btn{font-size:12px;min-height:40px;padding:9px 11px}
+.pc-picker{display:flex;gap:7px;overflow:auto;padding:4px 0 10px;margin:5px 0;scrollbar-width:none}
+.pc-picker button{flex:none;max-width:230px;border:1.5px solid white;border-radius:30px;min-height:42px;padding:9px 13px;font-size:13px;background:#f0f8df;color:#335e32;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc-picker button[aria-pressed=true]{background:#d6edac;border-color:#81b84e;font-weight:600}
+.pc-section-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:22px 0 10px}
+.pc-section-title h2{font-size:20px;line-height:1.2;margin:0}
+.pc-section-title .linkmore{font-size:12px}
+.pc-link-panel{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.pc-link-panel button{min-height:90px;border:1.5px solid white;border-radius:24px;background:linear-gradient(135deg,#ecf8dc,#fff9ec);box-shadow:var(--shadow);padding:14px;text-align:left;color:var(--forest);font-size:13px;font-weight:600}
+.pc-link-panel .ic{display:block;margin-bottom:9px;color:#619a30}
+.pc-form-actions{display:flex;gap:8px;margin-top:18px}
+.pc-form-actions .btn{flex:1}
+.pc-form-actions .btn:disabled,.pc-auth button:disabled{cursor:default;opacity:.55;filter:saturate(.6)}
+.pc-diary-row{display:block;border:1.5px solid white;background:#fffefa;border-radius:22px;margin:10px 0;padding:13px;box-shadow:var(--shadow)}
+.pc-diary-name{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:15px;font-weight:600}
+.pc-diary-name img{width:38px;height:38px;border-radius:12px}
+.pc-marks{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pc-marks button{border:1px solid #e3e8d7;border-radius:13px;background:#f8f9f2;min-height:41px;font-size:11px;color:#4c614b;padding:8px 4px}
+.pc-marks button[aria-pressed=true]{background:#ddf3b9;border-color:#8fbe57;color:#315f25;font-weight:600}
+.pc-marks button[data-pc-value=partial][aria-pressed=true]{background:#ffedbc;border-color:#d4af56;color:#735518}
+.pc-marks button[data-pc-value=missed][aria-pressed=true]{background:#f0eee8;border-color:#b3b6ac;color:#596254}
+.pc-diary-date{width:100%;min-height:44px;margin:8px 0 12px;border:1px solid #dce6ce;border-radius:16px;padding:9px 12px;background:#fff;color:var(--forest);font-size:16px}
+.pc-doc{display:flex;align-items:center;gap:12px;padding:15px;border:1.5px solid white;background:#fffefa;border-radius:22px;margin:10px 0;box-shadow:var(--shadow)}
+.pc-doc>.ic{color:#58a789;width:29px;height:29px}
+.pc-doc>div{flex:1;min-width:0}
+.pc-doc strong{font-size:13px;line-height:1.4;display:block;overflow-wrap:anywhere}
+.pc-doc small{font-size:11px;color:#6c7868;display:block;margin-top:4px}
+.pc-doc button{font-size:11px;min-height:39px;padding:8px 10px}
+.pc-loading{padding:25px 15px;text-align:center;font-size:13px;color:#64735e}
+.pc-loading::before{content:'';display:block;width:24px;height:24px;margin:0 auto 13px;border:3px solid #e2edcf;border-top-color:#75b345;border-radius:50%;animation:pc-spin .9s linear infinite}
+.pc-save-bar{position:sticky;bottom:-20px;padding:12px 0 22px;background:linear-gradient(transparent,#fcfaf5 25%);margin-top:9px}
+.pc-save-bar .btn{width:100%;font-size:14px}
+.pc-auth-mode .bottom-nav{display:none}
+.pc-auth-mode .content{padding-bottom:max(22px,env(safe-area-inset-bottom))}
+.pc-auth-mode .topbar{background:transparent}
+.pc-session-hidden .content,.pc-session-hidden .bottom-nav{visibility:hidden}
+.pc-session-hidden::after{content:'Ваш Доктор · Личный кабинет';position:absolute;inset:35% 10% auto;text-align:center;font-size:20px;color:#426b36}
+.pc-date-future{opacity:.45}
+@keyframes pc-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.pc-loading::before{animation:none}}
+@media(max-width:365px){.header-actions{gap:5px}.header-actions .circle-btn{width:37px;height:37px}.pc-auth-intro{padding:17px 14px;min-height:170px}.pc-auth-intro h1{font-size:23px}.pc-auth-intro>img{right:-47px}.pc-auth-form{padding:17px 14px}.pc-benefits{gap:9px}.pc-kid .btn{font-size:11px}.pc-marks button{font-size:10px}}
+
+.pc-demo-notice{border:1px solid #eadcbf;border-radius:18px;background:#fff8e9;color:#765d35;padding:11px 13px;margin:13px 0;font-size:11px;line-height:1.5}
+.pc-demo-notice strong,.pc-demo-notice span{display:block}.pc-demo-notice strong{margin-bottom:3px;font-weight:600}
+.pc-demo-label{display:block;font-size:11px;font-weight:600;color:#72934a;margin-bottom:7px;letter-spacing:.03em}
+.pc-new-family{margin-top:16px}.pc-new-family summary,.pc-plan summary{cursor:pointer;font-size:13px;font-weight:600;color:#477b38;padding:8px 0;min-height:36px;list-style-position:inside}
+.pc-family-enter{white-space:normal!important;overflow-wrap:anywhere;line-height:1.4!important;text-align:left;justify-content:flex-start}
+.pc-doctor-entry{margin:14px 0;padding:18px;background:linear-gradient(130deg,#eaf7f1,#fffaf0)}
+.pc-doctor-entry h2{font-size:20px;line-height:1.2;margin:5px 0 9px}.pc-doctor-entry p{font-size:12px;line-height:1.5;color:#65796c;margin:0}
+.pc-auth-intro>div{max-width:68%}.pc-auth-intro h1{font-size:24px;line-height:1.12}
+.pc-plan{margin:16px 0;padding:12px 16px}.pc-plan-item{margin-top:12px;border-top:1px solid #e9eddc;padding-top:12px}.pc-plan-item strong{font-size:13px;color:#315e35}
+.pc-plan-item p,.pc-diary-recommendation{font-size:12px;line-height:1.55;color:#58715e;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 10px}
+.pc-future{margin-bottom:14px}.pc-doctor-return{display:block;width:100%;border:1px solid #d7e6c7;background:#edf8df;color:#356a36;border-radius:18px;padding:12px;margin-bottom:13px;font-size:13px}
+.pc-account strong{overflow-wrap:anywhere}.pc-account>div{min-width:0}.pc-account .circle-btn{flex:none}.pc-new-family input{margin-bottom:8px}
+@media(max-width:365px){.pc-auth-intro h1{font-size:22px}.pc-auth-intro>img{opacity:.75}.pc-demo-notice{font-size:10px}.pc-kid .btn{font-size:12px}}
+
+.g-coverage{text-align:center;margin:8px 10px 13px!important;line-height:1.5}.g-month>span{font-size:12px}.g-legend .lg:not(.done):not(.partial):not(.missed){border:1px solid #b7cba5;background:transparent;border-radius:50%}.g-growth-text small{line-height:1.4}.g-growth .ring-inside small{max-width:60px}

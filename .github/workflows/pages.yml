@@ -15,7 +15,40 @@ concurrency:
   group: pages
   cancel-in-progress: false
 jobs:
+  verify-cabinet:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check demo data isolation and public cache
+        run: |
+          node tests/demo-adapter.cjs
+          node tests/demo-stats.cjs
+          node tests/cabinet-cache.cjs
+      - name: Install browser test runtime
+        run: |
+          npm install --prefix "$RUNNER_TEMP/vd-ui" --no-audit --no-fund --ignore-scripts playwright@1.62.1
+          "$RUNNER_TEMP/vd-ui/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Verify parent and doctor demo in browser
+        shell: bash
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > "$RUNNER_TEMP/vd-static.log" 2>&1 &
+          vd_test_server_pid=$!
+          trap 'kill "$vd_test_server_pid" 2>/dev/null || true' EXIT
+          NODE_PATH="$RUNNER_TEMP/vd-ui/node_modules" VD_BASE_URL=http://127.0.0.1:8765 VD_QA_DIR="$RUNNER_TEMP/vd-cabinet-screenshots" node tests/demo-ui.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cabinet-interface-checks
+          path: ${{ runner.temp }}/vd-cabinet-screenshots
+          if-no-files-found: ignore
+          retention-days: 7
   build:
+    needs: verify-cabinet
+    if: always() && (needs.verify-cabinet.result == 'success' || needs.verify-cabinet.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,10 +63,6 @@ jobs:
           key: vd-public-doctors-${{ github.run_id }}
           restore-keys: |
             vd-public-doctors-
-      - name: Check public booking widget and Telegram target (read only)
-        run: |
-          python -m pip install --quiet requests beautifulsoup4
-          python scripts/probe_booking.py
       - name: Fetch published doctors from clinic
         id: sync
         shell: bash
@@ -85,10 +114,18 @@ jobs:
           key: vd-public-doctors-${{ github.run_id }}
       - name: Embed verified doctors in original PWA
         run: python scripts/embed_doctors.py
+      - name: Validate cabinet scripts and stage public files only
+        run: |
+          node --check cabinet-demo.js
+          node --check doctor-cabinet.js
+          node --check patient-cabinet.js
+          node --check pwa-updates.js
+          node --check sw.js
+          python scripts/stage_public.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
   deploy:
     needs: build
     runs-on: ubuntu-latest

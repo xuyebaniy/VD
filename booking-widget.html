@@ -26,7 +26,7 @@
   var ready=false;
   function report(state){
     var h=Math.max(640,Math.min(3000,document.body.scrollHeight+35));
-    if(window.parent&&window.parent!==window)window.parent.postMessage({type:'vd-medihost-widget',state:state,height:h},location.origin);
+    if(window.parent&&window.parent!==window)window.parent.postMessage({type:'vd-medihost-widget',state:state,height:h},new URL(document.referrer||location.href).origin);
   }
   function check(){
     holder=document.getElementById('scheduleframe');

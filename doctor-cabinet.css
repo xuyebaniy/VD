@@ -1,0 +1,101 @@
+/* Doctor demo dashboard, within the existing gentle clinic palette. */
+.vdd-root{color:var(--forest,#214d39);font-size:14px;padding:6px 0 24px;overflow-wrap:anywhere}
+.vdd-root *{box-sizing:border-box}
+.vdd-root button,.vdd-root input,.vdd-root select,.vdd-root textarea{font:inherit}
+.vdd-root button:disabled{opacity:.48;cursor:default}
+.vdd-root h1,.vdd-root h2,.vdd-root h3,.vdd-root p{margin-top:0}
+.vdd-root h2{font-size:18px;line-height:1.3;letter-spacing:-.3px;margin-bottom:12px}
+.vdd-root h3{font-size:13px;line-height:1.35;margin:0}
+.vdd-hero{border:2px solid white;border-radius:29px;padding:18px 19px 19px;background:linear-gradient(125deg,#edf8db 8%,#e2f0d9 59%,#fae9ea);box-shadow:var(--shadow,0 8px 22px #486e3314);margin-bottom:15px}
+.vdd-hero-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.vdd-badge{font-size:10px;line-height:1.4;letter-spacing:.04em;font-weight:700;padding:5px 9px;border-radius:20px;background:#ffffffb8;color:#52734a}
+.vdd-hero h1{font-size:29px;line-height:1.12;letter-spacing:-1px;margin:0 0 9px}
+.vdd-hero>p{font-size:13px;line-height:1.55;max-width:32em;margin:0 0 14px;color:#4f6c54}
+.vdd-local{font-size:10px;color:#64775e;line-height:1.4}
+.vdd-text-button{background:none;border:0;color:#4e7a40;font-size:12px!important;font-weight:650!important;padding:9px 4px;min-height:36px;text-decoration:underline;text-underline-offset:4px}
+.vdd-card{border:1.5px solid white;border-radius:25px;background:#fffefd;padding:17px;margin:14px 0;box-shadow:0 7px 21px #44603d0d}
+.vdd-section-line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
+.vdd-section-line h2{margin-bottom:0}
+.vdd-select-card select{display:block;width:100%;min-width:0;min-height:48px;border:1px solid #dbe7d3;border-radius:15px;background:#f8fbf3;color:#244b37;font-size:15px;padding:10px 32px 10px 12px;text-overflow:ellipsis}
+.vdd-help{font-size:11px;line-height:1.55;color:#6c7b6e;margin:9px 0 0}
+.vdd-month-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin:17px 0 8px}
+.vdd-month-nav label{min-width:0;max-width:230px;flex:1}
+.vdd-month-nav input{width:100%;min-height:44px;text-align:center;border:0;border-radius:14px;background:#f0f6e8;color:#2d573e;font-size:15px;font-weight:650;padding:8px;min-width:0;appearance:auto}
+.vdd-arrow{width:43px;height:43px;flex:none;border:1px solid #e1e9d8;border-radius:15px;background:#fff;color:#4b7542;display:grid;place-items:center}
+.vdd-arrow svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.vdd-child-caption{text-align:center;font-size:12px;color:#67786a;margin:11px 0 14px;line-height:1.5}
+.vdd-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vdd-metric{padding:16px 12px 15px;border-radius:23px;border:1.5px solid white;min-width:0;display:flex;flex-direction:column}
+.vdd-metric-green{background:linear-gradient(140deg,#edf7df,#e5f2d4)}
+.vdd-metric-pink{background:linear-gradient(140deg,#fff1ee,#f8e8e8)}
+.vdd-metric small{font-size:10px;line-height:1.5;color:#617259;min-height:30px}
+.vdd-metric>strong{display:block;font-size:32px;line-height:1.2;letter-spacing:-1px;margin:6px 0}
+.vdd-metric>strong.vdd-no-score{font-size:19px;line-height:1.28;letter-spacing:-.5px;min-height:38px;display:flex;align-items:center}
+.vdd-metric strong em{font-size:15px;font-style:normal;font-weight:500;letter-spacing:0;color:#7b796c;white-space:nowrap}
+.vdd-metric>span{font-size:10px;line-height:1.5;color:#63745e}
+.vdd-summary-note{text-align:center;margin-top:9px}
+.vdd-last-mark{font-size:11px;line-height:1.5;color:#6c7b6e;margin:8px 0 14px;text-align:center}
+.vdd-last-mark strong{font-weight:650;color:#456348}
+.vdd-method{background:#f0f5e9;border-radius:16px;padding:12px 13px;margin-bottom:16px;color:#5f745c;font-size:11px;line-height:1.6}
+.vdd-method summary{cursor:pointer;font-weight:650;color:#47703e;min-height:22px}
+.vdd-method p{margin:8px 0 0}
+.vdd-habits{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vdd-habit{background:#f6f9f1;border:1px solid #eaf0e2;border-radius:18px;padding:12px 10px;min-width:0}
+.vdd-habit:nth-child(3n+2){background:#fff6f3;border-color:#f6e9e4}
+.vdd-habit:nth-child(3n){background:#f0f8f5;border-color:#e3f0e9}
+.vdd-habit-top{display:flex;align-items:center;gap:6px;min-height:34px;margin-bottom:7px}
+.vdd-habit-number{flex:none;width:22px;height:22px;border-radius:8px;background:#ffffffc7;display:grid;place-items:center;font-size:10px;font-weight:700;color:#6c845f}
+.vdd-habit-score{font-size:25px;line-height:1.25;letter-spacing:-.5px;display:block;min-height:32px}
+.vdd-habit-score.empty{font-size:13px;letter-spacing:0;font-weight:500;color:#7d8879;display:flex;align-items:center}
+.vdd-bar{height:5px;border-radius:9px;background:#e7ecdf;overflow:hidden;margin:9px 0 7px}
+.vdd-bar span{display:block;height:100%;background:#9ac66e;border-radius:9px}
+.vdd-habit>p{font-size:10px;line-height:1.45;color:#70806b;margin:0 0 8px}
+.vdd-habit-counts{display:flex;gap:10px;font-size:10px;color:#62785d;font-variant-numeric:tabular-nums}
+.vdd-month-label{font-size:10px;line-height:1.4;color:#74806d;text-align:right;max-width:110px}
+.vdd-table-wrap{width:100%;overflow:auto}
+.vdd-day-table{border-collapse:collapse;width:100%;font-size:11px;table-layout:fixed}
+.vdd-day-table th,.vdd-day-table td{padding:9px 0;border-bottom:1px solid #edf0e6;vertical-align:middle;text-align:left}
+.vdd-day-table thead th{font-size:9px;line-height:1.35;font-weight:600;color:#7a8774;padding-top:10px;padding-bottom:10px}
+.vdd-day-table th:first-child{width:40px}
+.vdd-day-table th:nth-child(2){width:82px}
+.vdd-day-table tbody th>strong{font-size:14px;line-height:1.25;font-weight:650}
+.vdd-day-table small{display:block;font-size:9px;color:#829078;line-height:1.45;margin-top:2px;font-weight:400}
+.vdd-day-score{font-size:12px;line-height:1.35;font-weight:650}
+.vdd-unmarked .vdd-day-score{color:#899581;font-weight:500}
+.vdd-future{opacity:.5}
+.vdd-habit-letters,.vdd-day-marks{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;max-width:172px;margin-left:auto}
+.vdd-habit-letters abbr{text-decoration:none;text-align:center;font-size:9px;font-weight:650;cursor:help}
+.vdd-mark{display:inline-grid;place-items:center;aspect-ratio:1;max-height:23px;min-width:0;border-radius:7px;font-size:11px;font-style:normal;line-height:1;font-weight:650}
+.vdd-mark.done{background:#dfeece;color:#4f7b33}
+.vdd-mark.partial{background:#fff0cf;color:#9c772a}
+.vdd-mark.missed{background:#f7e3e4;color:#a56e73}
+.vdd-mark.missing{background:#f1f3ec;color:#9ca591;font-weight:400}
+.vdd-note-row td{padding:0 0 8px}
+.vdd-note-row details{font-size:10px;line-height:1.5;border-radius:10px;background:#f6f8f1;padding:7px 9px;color:#6d7e64}
+.vdd-note-row summary{cursor:pointer}
+.vdd-note-row p{white-space:pre-wrap;margin:7px 0 0;font-size:11px;color:#4b6547}
+.vdd-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:10px;color:#708269;margin-top:15px}
+.vdd-legend>span{display:flex;align-items:center;gap:6px}
+.vdd-legend .vdd-mark{width:19px;height:19px;flex:none;font-size:10px}
+.vdd-plan-card{background:linear-gradient(165deg,#fffefd 75%,#fcf2f0)}
+.vdd-plan-fields{display:grid;gap:13px;margin-top:17px}
+.vdd-plan-field{display:block;min-width:0}
+.vdd-plan-field>span{font-size:12px;font-weight:650;display:block;margin-bottom:7px}
+.vdd-plan-field textarea{resize:vertical;min-height:85px;max-height:320px;width:100%;border:1px solid #dce6d2;border-radius:14px;padding:11px 12px;background:white;color:#2a5039;font-size:16px;line-height:1.5;display:block}
+.vdd-plan-field textarea::placeholder{color:#9aa48f;font-size:12px}
+.vdd-plan-field textarea:disabled{background:#f4f5ee;color:#7b8572}
+.vdd-plan-field>small{display:block;text-align:right;font-size:9px;color:#929d88;margin-top:5px}
+.vdd-save-area{margin-top:7px}
+.vdd-primary{width:100%;min-height:47px;border:1px solid #86b956;border-radius:17px;background:linear-gradient(135deg,#a3cc7f,#8cbe64);color:#254d2e;font-weight:700!important;font-size:13px!important;padding:11px 13px;box-shadow:0 5px 13px #59813616;margin-top:10px}
+.vdd-save-area .vdd-primary:disabled{opacity:1;background:#eef2e7;border-color:#e1e8d6;color:#8a977d;box-shadow:none}
+.vdd-message{padding:12px 14px;border-radius:16px;background:#edf6e4;color:#547545;font-size:12px;line-height:1.5;margin:12px 0}
+.vdd-message.error{background:#fceceb;color:#985c57}
+.vdd-message.storage{background:#fff3dc;color:#8a7443}
+.vdd-loading{padding:30px 15px;text-align:center;color:#788b6a;font-size:12px;line-height:1.5}
+.vdd-empty{text-align:center;padding:24px 19px}
+.vdd-empty-symbol{display:grid;place-items:center;margin:0 auto 14px;width:61px;height:61px;border:2px solid #fff;border-radius:22px;background:linear-gradient(140deg,#edf6dc,#fae5e7);font-size:30px;color:#8ca66b}
+.vdd-empty>p{font-size:12px;line-height:1.6;color:#6b7f62;margin-bottom:10px}
+.vdd-empty .vdd-text-button{display:block;margin:9px auto 0}
+.vdd-sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+@media(min-width:660px){.vdd-root{max-width:840px;margin:0 auto}.vdd-hero{padding:24px 27px}.vdd-hero h1{font-size:33px}.vdd-card{padding:22px}.vdd-habits{grid-template-columns:repeat(3,1fr)}.vdd-plan-fields{grid-template-columns:1fr 1fr;gap:17px}.vdd-metric{padding:20px}.vdd-metric small{min-height:0;font-size:12px}.vdd-metric>strong{font-size:39px}.vdd-metric>span{font-size:12px}.vdd-day-table th:first-child{width:90px}.vdd-day-table th:nth-child(2){width:140px}.vdd-habit-letters,.vdd-day-marks{max-width:280px;gap:10px;margin-right:10px}.vdd-mark{max-height:27px}.vdd-legend{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:365px){.vdd-card{padding:14px 12px}.vdd-hero{padding:16px}.vdd-hero h1{font-size:26px}.vdd-metric{padding:13px 10px}.vdd-metric>strong{font-size:28px}.vdd-metric>strong.vdd-no-score{font-size:17px}.vdd-metric strong em{font-size:13px}.vdd-habit{padding:10px 8px}.vdd-habit-top{gap:5px}.vdd-habit-top h3{font-size:11px}.vdd-habit-number{width:19px;height:19px}.vdd-day-table th:first-child{width:33px}.vdd-day-table th:nth-child(2){width:68px}.vdd-habit-letters,.vdd-day-marks{gap:2px}.vdd-mark{font-size:10px}.vdd-section-line h2{font-size:16px}}

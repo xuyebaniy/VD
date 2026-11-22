@@ -1,0 +1,12 @@
+_site/
+test-results/
+node_modules/
+*.sqlite
+*.sqlite-*
+*.db
+integration/patient-cabinet/config.php
+integration/patient-cabinet/private/
+assets/doctors/
+icons/icon-192.png
+icons/icon-512.png
+__pycache__/

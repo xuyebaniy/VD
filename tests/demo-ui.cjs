@@ -187,8 +187,8 @@ async function run() {
     await nav(page, 'booking');
     const bookingFrame = page.locator('#vd-booking-frame');
     const bookingUrl = new URL(await bookingFrame.getAttribute('src'), BASE + '/');
-    assert.equal(bookingUrl.href, 'https://vash-doc.ru/record.php#scheduleframe');
-    assert.notEqual(bookingUrl.origin, BASE_ORIGIN, 'Booking scripts must run on the external clinic origin');
+    assert.equal(bookingUrl.href, new URL('booking-widget.html', BASE + '/').href);
+    assert.equal(bookingUrl.origin, BASE_ORIGIN, 'Trusted Medihost demo embed runs on the app origin');
     const sandbox = (await bookingFrame.getAttribute('sandbox') || '').split(/\s+/);
     for (const permission of ['allow-scripts', 'allow-forms', 'allow-same-origin', 'allow-popups', 'allow-popups-to-escape-sandbox']) assert.ok(sandbox.includes(permission), permission);
     assert.ok(!sandbox.includes('allow-top-navigation'));
@@ -198,7 +198,7 @@ async function run() {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
     await page.setViewportSize({ width: 320, height: 740 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
-    pass('Booking uses the official external origin with sandbox; family UI fits desktop and 320px screens');
+    pass('Booking uses the trusted Medihost demo frame on the app origin; family UI fits desktop and 320px screens');
 
     await logout(page); await page.locator('[data-pc="guest"]').click(); await nav(page, 'doctors');
     await page.locator('#doctor-search').waitFor({ state: 'visible' });

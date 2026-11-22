@@ -4,41 +4,33 @@
 'use strict';
 if(typeof PAGES==='undefined'||typeof S==='undefined'||typeof render!=='function')return;
 const CLINIC_PHONE='tel:+74842200540';
-// The clinic page has its own origin. Its scripts must never run with access to
-// this app's local demo data; no form data or messages are proxied by the app.
-const CLINIC_BOOKING_URL='https://vash-doc.ru/record.php#scheduleframe';
+// This local-only demo intentionally trusts the clinic's official Medihost
+// scripts on its own origin. Sandbox is not a parent-storage boundary here.
+const CLINIC_BOOKING_URL=new URL('./booking-widget.html',location.href).href;
 const widgetHtml=()=> (
   '<h1 class="page-title">Запись на приём</h1>'+
-  '<p class="page-subtitle">Выберите направление и врача в расписании клиники</p>'+
-  '<div class="plain-card" style="margin-top:12px;padding:10px;border-radius:25px">'+
-  '<div class="row" style="justify-content:space-between;padding:3px 7px 10px"><b style="font-size:13px">Онлайн-запись</b><small style="color:#66776b">Официальный сайт клиники</small></div>'+
-  '<div id="vd-booking-fallback" style="display:flex;flex-wrap:wrap;gap:8px;margin:0 3px 12px">'+
-  '<a id="vd-booking-open" class="btn btn-white" style="flex:1;text-decoration:none" href="'+CLINIC_BOOKING_URL+'" target="_blank" rel="noopener noreferrer">Открыть отдельно</a>'+
-  '<a id="vd-booking-call" class="btn btn-white" style="flex:1;text-decoration:none" href="'+CLINIC_PHONE+'">Позвонить в клинику</a></div>'+
-  '<p id="vd-booking-status" class="micro" role="status" aria-live="polite" data-state="loading" style="margin:8px 5px">Загружаем окно записи клиники…</p>'+
-  '<button class="linkmore" type="button" data-action="vd-booking-retry" style="margin:0 5px 12px">Загрузить окно заново</button>'+
-  '<div id="vd-booking-mount"></div>'+
-  '</div>'+
-  '<p class="micro" style="margin:12px 5px">Запись оформляется в окне официального сайта клиники. Подтверждение записи выполняется в форме клиники.</p>'
+  '<div id="vd-booking-notice" style="margin:8px 3px">'+
+  '<p id="vd-booking-status" class="micro" role="status" aria-live="polite" data-state="loading" style="margin:0">Загрузка расписания…</p>'+
+  '<button class="linkmore" type="button" data-action="vd-booking-retry" style="margin-top:8px" hidden>Повторить</button></div>'+
+  '<div id="vd-booking-mount"></div>'
 );
 PAGES.booking=widgetHtml;
 let bookingView=null;
-const bookingMessages={
- loading:'Загружаем окно записи клиники…',
- loaded:'Выберите направление и врача в окне клиники. Если расписание не появилось, откройте запись отдельно или позвоните в клинику.',
- slow:'Окно записи загружается дольше обычного. Можно открыть запись отдельно или позвонить в клинику.',
- offline:'Сейчас нет подключения к интернету. Когда связь появится, нажмите «Загрузить окно заново». Можно позвонить в клинику.',
- error:'Не удалось загрузить окно записи. Попробуйте ещё раз, откройте запись отдельно или позвоните в клинику.'
-};
+const bookingMessages={loading:'Загрузка расписания…',slow:'Расписание загружается дольше обычного.',offline:'Нет подключения к интернету.',error:'Не удалось загрузить расписание.'};
+const bookingStates=new Set(['loading','ready','slow','offline','error','empty']);
 function updateBookingStatus(view){
  if(view!==bookingView||!view.mount.isConnected)return;
  const state=navigator.onLine===false?'offline':view.phase;
  view.status.dataset.state=state;
- view.status.textContent=bookingMessages[state];
+ view.status.textContent=bookingMessages[state]||'';
+ // The wrapper owns its small notice once it has reported. This parent notice
+ // is only a fallback if the local iframe itself cannot initialize.
+ view.notice.hidden=view.reported;
+ view.retry.hidden=!['slow','offline','error'].includes(state);
 }
 function loadBookingFrame(view){
  clearTimeout(view.timer);
- view.phase='loading';
+ view.phase='loading';view.reported=false;
  updateBookingStatus(view);
  const frame=document.createElement('iframe');
  frame.id='vd-booking-frame';
@@ -47,30 +39,22 @@ function loadBookingFrame(view){
  frame.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
  frame.setAttribute('loading','eager');
  frame.setAttribute('scrolling','auto');
- frame.setAttribute('aria-describedby','vd-booking-status');
- frame.style.cssText='display:block;width:100%;height:900px;max-width:100%;border:0;border-radius:16px;background:#fffefb';
+ frame.style.cssText='display:block;width:100%;height:120px;max-width:100%;border:0;background:#fffefb';
  const current=()=>view===bookingView&&view.frame===frame&&view.mount.isConnected;
- // A cross-origin load event says nothing about schedule availability or HTTP
- // success. Keep the independent fallback links and neutral instructions.
- frame.addEventListener('load',function(){
-  if(!current())return;
-  clearTimeout(view.timer);
-  view.phase='loaded';
-  updateBookingStatus(view);
- });
+ // An iframe load event is never treated as schedule readiness.
  frame.addEventListener('error',function(){
   if(!current())return;
   clearTimeout(view.timer);
-  view.phase='error';
+  view.phase='error';view.reported=false;
   updateBookingStatus(view);
  });
  view.frame=frame;
  view.timer=setTimeout(function(){
-  if(!current())return;
+  if(!current()||view.reported)return;
   view.phase='slow';
   updateBookingStatus(view);
  },18000);
- // Install all parent-side observers before starting external navigation.
+ // Install parent-side observers before starting the local wrapper.
  frame.src=CLINIC_BOOKING_URL;
  view.mount.replaceChildren(frame);
 }
@@ -81,12 +65,25 @@ function mountBookingFrame(){
  bookingView=null;
  if(!mount)return;
  const status=document.getElementById('vd-booking-status');
- if(!status)return;
- bookingView={mount,status,frame:null,timer:null,phase:'loading'};
+ const notice=document.getElementById('vd-booking-notice');
+ const retry=document.querySelector('[data-action="vd-booking-retry"]');
+ if(!status||!notice||!retry)return;
+ bookingView={mount,status,notice,retry,frame:null,timer:null,phase:'loading',reported:false};
  loadBookingFrame(bookingView);
 }
-// The existing renderer replaces #content; observe its mount without wrapping
-// the iframe's contents or re-rendering the page on a manual retry.
+window.addEventListener('message',function(event){
+ const view=bookingView,data=event.data;
+ if(!view||!view.frame||!view.mount.isConnected||event.origin!==location.origin||event.source!==view.frame.contentWindow)return;
+ if(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).length!==3)return;
+ if(data.type!=='vd-medihost-widget'||!bookingStates.has(data.state)||!Number.isInteger(data.height)||data.height<120||data.height>3000)return;
+ if(!Object.keys(data).every(key=>['type','state','height'].includes(key)))return;
+ clearTimeout(view.timer);
+ view.reported=true;view.phase=data.state;
+ const height=data.height+'px';
+ if(view.frame.style.height!==height)view.frame.style.height=height;
+ updateBookingStatus(view);
+});
+// Observe shell navigation; a retry changes only the iframe, never the page.
 new MutationObserver(mountBookingFrame).observe(document.getElementById('content')||document.body,{childList:true,subtree:true});
 mountBookingFrame();
 document.addEventListener('click',function(event){
@@ -132,10 +129,10 @@ if('serviceWorker' in navigator){
   if(bookingFrameIsLive())return;
   if(window.VDCabinet?.isActive())return;
   if(reload)return;
-  try{if(sessionStorage.getItem('vd-reload-demo-v17')==='1')return;}catch(_){}
+  try{if(sessionStorage.getItem('vd-reload-demo-v18')==='1')return;}catch(_){}
   const input=document.activeElement;
   if(input&&/^(INPUT|TEXTAREA)$/i.test(input.tagName))return;
-  reload=true;try{sessionStorage.setItem('vd-reload-demo-v17','1');}catch(_){}
+  reload=true;try{sessionStorage.setItem('vd-reload-demo-v18','1');}catch(_){}
   window.location.reload();
  });
 }

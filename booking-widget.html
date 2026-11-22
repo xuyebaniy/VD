@@ -7,26 +7,107 @@
 <title>Запись к врачу — Ваш Доктор</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:#fffefb;color:#174431;font-family:system-ui,-apple-system,Arial,sans-serif}
-main{max-width:520px;margin:0 auto;padding:32px 20px}
-h1{font-size:26px;line-height:1.2;margin:0 0 16px}
-p{line-height:1.55;color:#587261}
-.actions{display:grid;gap:12px;margin-top:24px}
-a{display:block;padding:15px 18px;border-radius:18px;background:#347b46;color:#fff;text-align:center;font-weight:600;text-decoration:none}
-a.phone{background:#edf5e9;color:#174431}
-a:focus-visible{outline:3px solid #e28d37;outline-offset:3px}
+html,body{margin:0;background:#fffefb;color:#174431;font-family:system-ui,-apple-system,Arial,sans-serif}
+#vd-widget-shell{display:flow-root;margin:0;padding:0;width:100%}
+#vd-widget-notice{padding:12px 4px;font-size:13px;line-height:1.45;color:#587261}
+#vd-widget-status{margin:0}
+#vd-widget-retry{margin-top:8px;padding:7px 12px;border:1px solid #d9e6d5;border-radius:10px;background:#edf5e9;color:#174431;font:inherit;cursor:pointer}
+#vd-widget-retry:focus-visible{outline:3px solid #e28d37;outline-offset:3px}
+[hidden]{display:none!important}
+#scheduleframe{max-width:100%}
 </style>
 </head>
 <body>
-<!-- Compatibility page for older links. External booking code must never run
-     on the same origin as the application's locally stored demo profiles. -->
-<main>
-  <h1>Запись на приём</h1>
-  <p>Выберите направление, врача и время приёма в расписании на официальном сайте клиники.</p>
-  <div class="actions">
-    <a href="https://vash-doc.ru/record.php#scheduleframe" target="_blank" rel="noopener noreferrer">Открыть расписание клиники</a>
-    <a class="phone" href="tel:+74842200540">Позвонить: +7 (484) 220-05-40</a>
+<!-- Intentionally trusted, same-origin Medihost embed for this local-only demo.
+     The iframe does not isolate application storage from provider scripts.
+     Only display state and content height are sent to the parent by this page. -->
+<main id="vd-widget-shell">
+  <div id="vd-widget-notice">
+    <p id="vd-widget-status" role="status" aria-live="polite" data-state="loading">Загрузка расписания…</p>
+    <button id="vd-widget-retry" type="button" hidden>Повторить</button>
   </div>
+  <script>
+  (function(){
+    'use strict';
+    const shell=document.getElementById('vd-widget-shell');
+    const notice=document.getElementById('vd-widget-notice');
+    const status=document.getElementById('vd-widget-status');
+    const retry=document.getElementById('vd-widget-retry');
+    const messages={loading:'Загрузка расписания…',slow:'Расписание загружается дольше обычного.',offline:'Нет подключения к интернету.',error:'Не удалось загрузить расписание.',ready:'',empty:''};
+    let phase='loading',seenContent=false,queued=false,ajaxObserved=false,lastReport='';
+    function report(){
+      // Measure a content-sized element, never the iframe viewport. Reporting
+      // only changes prevents height -> viewport -> height feedback loops.
+      const height=Math.max(120,Math.min(3000,Math.ceil(Math.max(shell.getBoundingClientRect().height,shell.scrollHeight))+2));
+      const signature=status.dataset.state+':'+height;
+      if(signature===lastReport)return;
+      lastReport=signature;
+      if(parent!==window&&location.origin!=='null')parent.postMessage({type:'vd-medihost-widget',state:status.dataset.state,height:height},location.origin);
+    }
+    function show(next){
+      phase=next;
+      const state=navigator.onLine===false?'offline':phase;
+      if(status.dataset.state!==state){status.dataset.state=state;status.textContent=messages[state];}
+      const hideNotice=state==='ready'||state==='empty';
+      const hideRetry=!['slow','offline','error'].includes(state);
+      if(notice.hidden!==hideNotice)notice.hidden=hideNotice;
+      if(retry.hidden!==hideRetry)retry.hidden=hideRetry;
+      report();
+    }
+    function visible(node){return !!node&&node.getClientRects().length>0;}
+    function observeAjaxErrors(){
+      if(ajaxObserved||typeof window.JQ!=='function')return;
+      ajaxObserved=true;
+      // Observe failures only; the provider owns every request and form.
+      window.JQ(document).on('ajaxError.vdWidget',function(_event,_xhr,settings){
+        if(seenContent||!settings||typeof settings.url!=='string')return;
+        try{
+          const url=new URL(settings.url,location.href);
+          if(url.hostname==='api.medihost.ru'&&/^\/v2\/(ScheduleFrame\/index\/|clinic\/get_)/.test(url.pathname))show('error');
+        }catch(_){}
+      });
+    }
+    function inspect(){
+      queued=false;
+      observeAjaxErrors();
+      const area=document.querySelector('#scheduleframe #schedule-area');
+      if(area){
+        const error=area.querySelector('.schedule-error');
+        const empty=area.querySelector('.no-found-filter');
+        const group=Array.from(area.querySelectorAll('.schedule-group-name[data-group-id]')).some(node=>visible(node)&&/^\d+$/.test(node.getAttribute('data-group-id'))&&node.textContent.trim());
+        const rows=Array.from(area.querySelectorAll('.schedule-total tbody tr,.schedule-personal tbody tr')).some(node=>visible(node)&&node.querySelector('td'));
+        if(visible(error)&&error.textContent.trim()){clearTimeout(timer);show('error');return;}
+        if(group||rows){seenContent=true;clearTimeout(timer);show('ready');return;}
+        if(visible(empty)&&empty.textContent.trim()){
+          clearTimeout(timer);
+          show(/техническ.*ошиб|произошла ошибка/i.test(empty.textContent)?'error':'empty');
+          return;
+        }
+      }
+      // After genuine content has appeared, subsequent provider transitions
+      // stay under its control; never inspect or send patient form values.
+      if(seenContent&&phase!=='error')show('ready');
+      else show(phase);
+    }
+    function queueInspect(){observeAjaxErrors();if(!queued){queued=true;requestAnimationFrame(inspect);}}
+    retry.addEventListener('click',function(){window.location.reload();});
+    window.addEventListener('offline',function(){show(phase);});
+    window.addEventListener('online',queueInspect);
+    window.addEventListener('error',function(event){
+      const target=event.target;
+      if(!seenContent&&(target===window||target&&/^(SCRIPT|LINK)$/.test(target.tagName))){clearTimeout(timer);show('error');}
+    },true);
+    window.addEventListener('unhandledrejection',function(){if(!seenContent){clearTimeout(timer);show('error');}});
+    window.addEventListener('resize',queueInspect);
+    const timer=setTimeout(function(){if(!seenContent&&phase==='loading')show('slow');},18000);
+    new MutationObserver(queueInspect).observe(shell,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden','data-group-id']});
+    if(typeof ResizeObserver==='function')new ResizeObserver(queueInspect).observe(shell);
+    show('loading');
+  })();
+  </script>
+  <!-- Keep the official parser-inserted loader unchanged. All status/error
+       observers and the timeout above exist before any external script runs. -->
+  <script src="https://api.medihost.ru/v2/ScheduleFrame/code/48196"></script>
 </main>
 </body>
 </html>

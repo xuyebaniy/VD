@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Best-effort synchronization of public doctor profiles, never fabricate appointments."""
-import json,re,urllib.parse,sys
+import json,re,urllib.parse,sys,hashlib
 from datetime import datetime,timezone
 from pathlib import Path
 import requests
@@ -59,11 +59,14 @@ def main():
  doctors=[]
  for i,d in enumerate(found.values(),1):
   old=previous.get(d['name'],{})
-  if not d['photo'] and old.get('photo','').startswith('assets/'):d['photo']=old['photo']
-  d['id']=i;doctors.append(d)
+  if not d['photo'] and str(old.get('photo') or '').startswith('assets/'):d['photo']=old['photo']
+  d['id']=int(hashlib.sha1(d['url'].encode('utf-8')).hexdigest()[:8],16);doctors.append(d)
  DEST.parent.mkdir(exist_ok=True)
  DEST.write_text(json.dumps({'ok':True,'updated':datetime.now(timezone.utc).isoformat(),'source':ROOT+'/specialists/','clinic':{'phone':'+7 (484) 220-05-40','phoneHref':'+74842200540','address':'Обнинск, Ленина, 188'},'doctors':doctors},ensure_ascii=False,indent=2))
  print('Saved',len(doctors),'public doctor cards. Schedule fields published:',sum(bool(d['schedule']) for d in doctors))
+ for d in doctors[:12]:print('Doctor:',d['name'],'Specialty:',d['specialty'],'Photo:',bool(d['photo']),'Schedule:',d['schedule'][:100])
 if __name__=='__main__':
  try:main()
- except Exception as e:print('Sync failed, keeping last saved catalog:',repr(e),file=sys.stderr)
+ except Exception as e:
+  print('Sync failed, keeping last saved catalog:',repr(e),file=sys.stderr)
+  sys.exit(1)

@@ -478,6 +478,11 @@ body{color:var(--forest)}
 <meta name="apple-mobile-web-app-title" content="Ваш Доктор">
 <meta name="mobile-web-app-capable" content="yes">
 
+<style id="vd-real-portrait-layout">
+/* Only real synced staff photos; the original approved application design is unchanged. */
+.portrait img[src^="assets/doctors/"], .bk-photo img[src^="assets/doctors/"], .next-photo img[src^="assets/doctors/"]{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center bottom!important;filter:none!important}
+.hero-person[src^="assets/doctors/"]{object-fit:contain!important;object-position:right bottom!important;filter:none!important}
+</style>
 </head><body>
 <div class="app" id="app">
   <header class="topbar" id="topbar"></header>
@@ -565,7 +570,7 @@ const ICONS={
  medicine:'<rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 7v10M7 12h10"/>'
 };
 const icon=(name,cls='')=>makeIcon(name,cls);
-const photo=(doctor)=>{const v=String(doctor?.photo||'');if(!v)return null;if(v[0]==='/'&&!v.startsWith('//'))return v;if(/^https:\/\//i.test(v)){try{const u=new URL(v);return u.hostname==='vash-doc.ru'&&u.protocol==='https:'?v:null}catch{return null}}return asset(v.split('/').at(-1))};
+const photo=(doctor)=>{const v=String(doctor?.photo||'');if(!v)return null;if(/^assets\/doctors\/[a-f0-9]{18}\.webp$/.test(v))return v;if(v[0]==='/'&&!v.startsWith('//'))return v;if(/^https:\/\//i.test(v)){try{const u=new URL(v);return u.hostname==='vash-doc.ru'&&u.protocol==='https:'?v:null}catch{return null}}return asset(v.split('/').at(-1))};
 const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,k=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[k]));
 const MONTHS=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const MONTHN=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
@@ -796,7 +801,7 @@ const VD_LIVE={catalogStatus:'demo',servicesStatus:'demo',bookingMode:VD_CFG.boo
 function vdPath(path){return String(VD_CFG.apiBase||'').replace(/\/$/,'')+'/'+(VD_CFG.staticData?String(path).replace(/\.php$/,'.json'):path);}
 function vdSafeUrl(v){try{const u=new URL(v,location.origin);return u.protocol==='https:'&&u.hostname==='vash-doc.ru'?u.href:null}catch{return null}}
 async function vdFetchJson(path,opts={}){const response=await fetch(vdPath(path),{credentials:'same-origin',cache:'no-store',...opts});const obj=await response.json().catch(()=>null);if(!response.ok||!obj||obj.ok!==true)throw new Error(obj?.message||'API is not configured');return obj;}
-function vdCatalogTag(){return VD_LIVE.catalogStatus==='connected'?'Каталог с сайта vash-doc.ru (по последнему обновлению)':VD_CFG.apiBase?'Нет связи с обновлениями. Показан сохранённый каталог.':'Демонстрационный каталог. Чтобы подключить данные клиники, разместите PWA на vash-doc.ru/app/.'}
+function vdCatalogTag(){return VD_LIVE.catalogStatus==='connected'?'Актуальный каталог с сайта vash-doc.ru':VD_CFG.apiBase?'Нет связи с каталогом Битрикс. Показаны демонстрационные данные.':'Демонстрационный каталог. Чтобы подключить данные клиники, разместите PWA на vash-doc.ru/app/.'}
 async function vdStartSync(){
  if(!VD_CFG.apiBase){VD_LIVE.catalogStatus='demo';VD_LIVE.bookingMode='external';return}
  VD_LIVE.catalogStatus='loading';
@@ -804,16 +809,14 @@ async function vdStartSync(){
   const rsp=await vdFetchJson('doctors.php');
   if(VD_CFG.staticData&&!/^https:\/\/vash-doc\.ru\/specialists\//.test(String(rsp.source||'')))throw new Error('Public directory not yet verified');
   VD_LIVE.updated=rsp.updated||null;
-  const list=(rsp.doctors||[]).map(d=>({id:Number(d.id),name:String(d.name||''),specialty:String(d.specialty||'Специализация уточняется'),photo:d.photo&&vdSafeUrl(d.photo)?vdSafeUrl(d.photo):(DOCTORS.find(x=>x.name===d.name)?.photo||null),url:d.url&&vdSafeUrl(d.url)?vdSafeUrl(d.url):null,schedule:String(d.schedule||'')})).filter(d=>Number.isInteger(d.id)&&d.id>0&&d.name.length>1);
+  const list=(rsp.doctors||[]).map(d=>({id:Number(d.id),name:String(d.name||''),specialty:String(d.specialty||'Специализация уточняется'),photo:/^assets\/doctors\/[a-f0-9]{18}\.webp$/.test(String(d.photo||''))?d.photo:d.photo&&vdSafeUrl(d.photo)?vdSafeUrl(d.photo):(DOCTORS.find(x=>x.name===d.name)?.photo||null),url:d.url&&vdSafeUrl(d.url)?vdSafeUrl(d.url):null,schedule:String(d.schedule||'')})).filter(d=>Number.isInteger(d.id)&&d.id>0&&d.name.length>1);
   if(!list.length)throw new Error('empty catalog');
   DOCTORS.splice(0,DOCTORS.length,...list);
   if(!DOCTORS.some(d=>d.id===S.doctorId)){S.doctorId=DOCTORS[0].id;S.booking.doctorId=S.doctorId}
-  VD_LIVE.catalogStatus='connected';VD_LIVE.syncedAt=Date.now();VD_LIVE.cachedFallback=false;
- }catch(e){if(VD_LIVE.syncedAt){VD_LIVE.catalogStatus='connected';VD_LIVE.cachedFallback=true;}else{VD_LIVE.catalogStatus='unavailable';}console.warn('VD public catalog:',e.message)}
- if(!VD_CFG.staticData){
-  try{const r=await vdFetchJson('services.php');VD_LIVE.services=(r.services||[]).filter(s=>s&&s.name);VD_LIVE.servicesStatus='connected'}catch{VD_LIVE.servicesStatus='unavailable'}
-  try{const st=await vdFetchJson('status.php');VD_LIVE.session=st;VD_LIVE.bookingMode='external'}catch{VD_LIVE.bookingMode='external'}
- }
+  VD_LIVE.catalogStatus='connected';
+ }catch(e){VD_LIVE.catalogStatus='unavailable';console.warn('VD Bitrix catalog:',e.message)}
+ try{const r=await vdFetchJson('services.php');VD_LIVE.services=(r.services||[]).filter(s=>s&&s.name);VD_LIVE.servicesStatus='connected'}catch{VD_LIVE.servicesStatus='unavailable'}
+ try{const st=await vdFetchJson('status.php');VD_LIVE.session=st;VD_LIVE.bookingMode='external'}catch{VD_LIVE.bookingMode='external'}
  // Never import the prototype's patient list and demo appointments into a real clinic account.
  S.bookings=[];
  if(['home','doctors','doctor','booking','services','profile','bookings'].includes(S.page))render({keepScroll:true});
@@ -997,130 +1000,21 @@ document.addEventListener('click',e=>{
  if(btn&&state.active)setTimeout(()=>{if(realId())loadMonth(true)},30);
 },true);
 window.addEventListener('online',()=>{if(state.active&&realId())loadMonth(true)});
-window.addEventListener('hashchange',()=>{if(state.active&&['garden','garden-day'].includes(S.page)&&realId()&&state.month!==S.gardenMonth)loadMonth(true)});boot();
+window.addEventListener('hashchange',()=>{if(state.active&&['garden','garden-day'].includes(S.page)&&realId()&&state.month!==S.gardenMonth)loadMonth(true)});
+boot();
 })();
 
 </script>
 
 <script>
-/* Contacts and public schedule: no changes to the existing visual assets. */
 (function(){
- const CSS='.vd-contact-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 14px}.vd-contact-actions a{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 13px;border-radius:18px;background:#e5f5d5;color:#155b32;text-decoration:none;font-size:13px;font-weight:700;border:1px solid #d4eabf}.vd-contact-actions a:first-child{background:#4b9b3c;color:#fff}.vd-time-note{padding:12px 14px;background:#fff9e9;border-radius:18px;margin:12px 0;color:#375641;font-size:13px;line-height:1.5}';
- const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
- const contacts=()=>'<div class="vd-contact-actions"><a href="tel:+74842200540" aria-label="Позвонить в Ваш Доктор по номеру 8 484 220 05 40">☎ +7 (484) 220-05-40</a><a href="tel:+79912221040" aria-label="Позвонить в Ваш Доктор на мобильный">☎ +7 (991) 222-10-40</a></div>';
- // Original PAGES functions remain intact. Add contacts and show only source-confirmed schedules.
- function decorate(name,extra){try{let old=PAGES[name];if(typeof old==='function')PAGES[name]=function(){return old.apply(this,arguments)+extra()}}catch(e){console.warn(e)}}
- for(const name of ['home','doctors','booking','profile','services'])decorate(name,contacts);
- decorate('doctor',()=>{const d=typeof doc==='function'?doc(S.doctorId):null;const sc=d?.schedule?.trim();return '<section class="vd-time-note"><strong>Расписание врача</strong><p>'+ (sc?escapeHTML(sc):'Точные часы и свободные окна уточняйте в онлайн-записи клиники.')+'</p>'+(d?.url?'<a href="'+escapeHTML(d.url)+'" target="_blank" rel="noopener noreferrer">Официальная страница врача</a>':'')+'</section>'+contacts()});
+ const style=document.createElement('style');style.textContent='.vd-contact-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 14px}.vd-contact-actions a{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 13px;border-radius:18px;background:#e5f5d5;color:#155b32;text-decoration:none;font-size:13px;font-weight:700;border:1px solid #d4eabf}.vd-contact-actions a:first-child{background:#4b9b3c;color:#fff}.vd-time-note{padding:12px 14px;background:#fff9e9;border-radius:18px;margin:12px 0;color:#375641;font-size:13px;line-height:1.5}';document.head.appendChild(style);
+ const contacts=()=>'<div class="vd-contact-actions"><a href="tel:+74842200540" aria-label="Позвонить в клинику по городскому номеру">☎ +7 (484) 220-05-40</a><a href="tel:+79912221040" aria-label="Позвонить в клинику на мобильный">☎ +7 (991) 222-10-40</a></div>';
+ const wrap=(name,extra)=>{try{let old=PAGES[name];if(typeof old==='function')PAGES[name]=function(){return old.apply(this,arguments)+extra()}}catch(e){console.warn(e)}};
+ for(const name of ['home','doctors','booking','profile','services'])wrap(name,contacts);
+ wrap('doctor',()=>{const d=typeof doc==='function'?doc(S.doctorId):null;const schedule=d?.schedule?.trim();return '<section class="vd-time-note"><strong>Расписание врача</strong><p>'+(schedule?escapeHTML(schedule):'Точные часы и свободные окна уточняйте в онлайн-записи клиники.')+'</p>'+(d?.url?'<a href="'+escapeHTML(d.url)+'" target="_blank" rel="noopener noreferrer">Официальная страница врача</a>':'')+'</section>'+contacts()});
  window.addEventListener('online',()=>{try{if(location.protocol!=='file:'&&typeof vdStartSync==='function')vdStartSync()}catch(e){}});
  if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.warn));
 })();
-</script>
-<script>
-/* Vash Doctor PWA enhancements: preserve the original V7 graphics and routes. */
-(function () {
-  'use strict';
-  const MAIN = { label: '+7 (484) 220-05-40', href: 'tel:+74842200540' };
-  const ALT = { label: '+7 (991) 222-10-40', href: 'tel:+79912221040' };
-  const css = document.createElement('style');
-  css.textContent = `
-    .vd-top-call{color:#248b48!important;background:linear-gradient(135deg,#e8f8dc,#fff)!important;box-shadow:0 5px 14px #529d3440!important}
-    .vd-top-call .ic{width:23px;height:23px;stroke-width:2}
-    .vd-source{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:9px 0 13px;padding:10px 12px;border:1px solid #ddedd0;background:#f5fbea;border-radius:17px;color:#315945;font-size:11px;line-height:1.35}
-    .vd-source strong{display:block;font-size:12px;color:#23693c;margin-bottom:2px}
-    .vd-refresh{border:1px solid #bfdfb4;border-radius:14px;padding:9px 11px;background:#fff;color:#28703e;font-weight:700;font-size:11px;flex:none;min-height:38px}
-    .vd-doctor-hours{margin:9px 0 0;padding:7px 8px;border-radius:10px;background:#f1f8e7;font-size:10px;line-height:1.4;color:#356b43}
-    .vd-schedule-page{margin:16px 0;padding:17px;border-radius:24px;border:1px solid #fff;background:linear-gradient(135deg,#f0f9dc,#fff9ee);box-shadow:var(--shadow)}
-    .vd-schedule-page h3{font-size:17px;margin:0 0 6px}
-    .vd-schedule-page p{font-size:12px;line-height:1.5;color:#4d6859}
-    .vd-call-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-    .vd-call-row a{display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;border-radius:16px;min-height:46px;padding:10px 6px;font-size:11px;font-weight:700;white-space:nowrap;flex:1;background:#dff1d0;color:#1e673a}
-    .vd-call-row a:first-child{background:linear-gradient(#77c441,#4b9e28);color:white}
-    .vd-day-note{color:#5a6b5e;font-size:11px;margin:7px 0}
-    @media(max-width:360px){.vd-source{flex-wrap:wrap}.vd-refresh{width:100%}}
-  `;
-  document.head.appendChild(css);
-  const phoneIcon = typeof icon === 'function' ? icon('phone') : '<span aria-hidden="true">☎</span>';
-  function insertCall() {
-    const actions = document.querySelector('#topbar .header-actions');
-    if (!actions || actions.querySelector('.vd-top-call')) return;
-    const a = document.createElement('a');
-    a.className = 'circle-btn vd-top-call';
-    a.href = MAIN.href;
-    a.setAttribute('aria-label', 'Позвонить в Ваш Доктор: ' + MAIN.label);
-    a.title = 'Позвонить в клинику';
-    a.innerHTML = phoneIcon;
-    actions.insertBefore(a, actions.firstElementChild);
-  }
-  const bar = document.getElementById('topbar');
-  if (bar) {
-    new MutationObserver(insertCall).observe(bar, {childList:true});
-    insertCall();
-  }
-  function calls(){return '<div class="vd-call-row"><a href="'+MAIN.href+'">☎ '+MAIN.label+'</a><a href="'+ALT.href+'">☎ '+ALT.label+'</a></div>';}
-  function status(){
-    const d=typeof VD_LIVE!=='undefined'?VD_LIVE:{};
-    const synced=d.catalogStatus==='connected';
-    let when='';
-    if(d.updated){try{when=new Date(d.updated).toLocaleString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' МСК';}catch(e){}}
-    const line=synced?(d.cachedFallback||!navigator.onLine?'Сохранённый каталог (нет связи)':'Каталог с vash-doc.ru'):(d.catalogStatus==='loading'?'Получаем список врачей':'Нет подтверждённого каталога — проверьте интернет');
-    return '<div class="vd-source" role="status"><div><strong>'+escapeHTML(line)+'</strong><span>'+(when?'Обновлено '+escapeHTML(when):'Автоматическая проверка каждые 6 часов')+'</span></div><button class="vd-refresh" data-vd-refresh="1" type="button">↻ Обновить</button></div>';
-  }
-  const originalCard = catalogCard;
-  catalogCard = function (d,i) {
-    const card=originalCard(d,i);
-    const known=typeof d.schedule==='string'&&d.schedule.trim();
-    const content='<div class="vd-doctor-hours">'+(known?'<b>График:</b> '+escapeHTML(d.schedule):'Расписание приёма уточняется')+'</div>';
-    return card.replace('</div><div class="doc-actions">', content+'</div><div class="doc-actions">').replace('Запись на сайте','В клинике «Ваш Доктор»');
-  };
-  const originalFeatured=featuredDocRail;
-  featuredDocRail=function(){
-    return VD_LIVE.catalogStatus==='connected'?originalFeatured(): '<div class="vd-source">Список врачей обновляется с сайта клиники. '+(navigator.onLine?'':'Для обновления нужен интернет.')+'</div>';
-  };
-  const originalDoctors=PAGES.doctors;
-  PAGES.doctors=function(){
-    if(VD_LIVE.catalogStatus!=='connected'){
-      return '<h1 class="page-title">Врачи клиники</h1>'+status()+'<div class="empty-state"><h3>Проверяем список специалистов</h3><p>Демонстрационные фамилии не показываем вместо текущих врачей. При наличии связи нажмите «Обновить».</p></div>'+calls();
-    }
-    return originalDoctors().replace('<p id="result-label"',status()+'<p id="result-label"').replace('Фото — только подтверждённые.','Данные с сайта клиники.');
-  };
-  const originalDoctor=PAGES.doctor;
-  PAGES.doctor=function(){
-    if(VD_LIVE.catalogStatus!=='connected')return '<h1 class="page-title">Карточка врача</h1>'+status()+calls();
-    let html=originalDoctor();
-    html=html.replace('Знакомство с врачом и демонстрация записи.','Данные официального сайта клиники.').replace('Дополнительная информация об образовании, стаже, цене и расписании не подтверждена в этой демонстрационной сборке.','График приёма отображается только при наличии опубликованных сведений.');
-    return status()+html;
-  };
-  function inAppBooking(){
-    const d=doc(S.booking.doctorId);
-    if(VD_LIVE.catalogStatus!=='connected')return '<h1 class="page-title">Запись в клинику</h1>'+status()+calls();
-    const schedule=d&&d.schedule&&d.schedule.trim()?escapeHTML(d.schedule):null;
-    const dates=Array.from({length:7},(_,i)=>dateISO(dateAt(i+1)));
-    return `<h1 class="page-title">Расписание и запись</h1><p class="page-subtitle">Выбранный специалист — внутри приложения</p>
-      <div class="booking-doctor">${imgPortrait(d,'p-1')}<div style="min-width:0"><span class="eyebrow">Врач клиники</span><h3>${escapeHTML(d.name)}</h3><p>${escapeHTML(d.specialty)}</p><button class="linkmore" data-nav="doctors">Сменить врача ${icon('arrow','ic-sm')}</button></div></div>
-      <div class="vd-schedule-page"><h3>${icon('calendar','ic-sm')} График приёма</h3><p>${schedule||'На публичной странице врача график не опубликован.'}</p><div class="field-title">${icon('calendar')} Ближайшие дни</div><div class="days">${dates.map(day=>{const x=parseISO(day);return `<button class="day-btn ${day===S.booking.date?'selected':''}" data-vd-day="${day}"><span>${WEEK[x.getDay()]}</span><strong>${x.getDate()}</strong><span>${MONTHS[x.getMonth()].slice(0,3)}</span></button>`}).join('')}</div><div class="vd-day-note">Выбор даты не означает, что время свободно.</div><h3>Свободное время</h3><p>Открытых свободных окон в данных сайта нет. Точное время подтвердит контакт-центр. Неподтверждённые слоты мы не показываем.</p>${calls()}</div>
-      <p class="micro">Список специалистов обновляется автоматически, но свободные интервалы доступны только после подключения расписания медицинской системы клиники.</p>`;
-  }
-  // Live MIS API may provide verified slots on the clinic domain. GitHub Pages does not.
-  PAGES.booking=()=>VD_CFG.staticData?inAppBooking():vdLiveBookingPage();
-  // Do not show demo doctor data on home during network refresh.
-  if(VD_LIVE.catalogStatus!=='connected'&&typeof render==='function')render({keepScroll:true});
-  document.addEventListener('click',function(e){
-    const refresh=e.target.closest('[data-vd-refresh]');
-    if(refresh){e.preventDefault();refresh.disabled=true;refresh.textContent='Обновляем…'; Promise.resolve(vdStartSync()).finally(()=>{if(document.contains(refresh)){refresh.disabled=false;refresh.textContent='↻ Обновить'}});return;}
-    const day=e.target.closest('[data-vd-day]');
-    if(day){e.preventDefault();S.booking.date=day.dataset.vdDay;render({keepScroll:true});return;}
-  },true);
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState!=='visible')return;
-    if(!VD_LIVE.syncedAt||Date.now()-VD_LIVE.syncedAt>60*60*1000)vdStartSync();
-    if('serviceWorker' in navigator)navigator.serviceWorker.getRegistration().then(reg=>reg&&reg.update()).catch(()=>{});
-  });
-  if('serviceWorker' in navigator){
-    let had=!!navigator.serviceWorker.controller,changing=false;
-    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!changing){changing=true;location.reload();}});
-  }
-})();
-
 </script>
 </body></html>

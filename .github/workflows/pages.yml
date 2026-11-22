@@ -24,14 +24,12 @@ jobs:
           python-version: "3.12"
       - uses: actions/cache/restore@v4
         with:
-          path: data/doctors.json
+          path: |
+            data/doctors.json
+            assets/doctors/
           key: vd-public-doctors-${{ github.run_id }}
           restore-keys: |
             vd-public-doctors-
-      - name: Diagnose doctor-photo markup
-        run: |
-          python -m pip install --quiet requests beautifulsoup4
-          python scripts/inspect_photos.py
       - name: Fetch published doctors from clinic
         id: sync
         shell: bash
@@ -47,9 +45,27 @@ jobs:
           obj=json.loads(Path('data/doctors.json').read_text(encoding='utf-8'))
           if not obj.get('source','').startswith('https://vash-doc.ru/specialists/') or len(obj.get('doctors',[]))<10:
               raise SystemExit('No previously verified doctor catalog - refusing to deploy stale prototype')
-          print('Using verified cached catalog with',len(obj['doctors']),'doctors')
+          photo_count = sum(
+              isinstance(d.get('photo'), str)
+              and d['photo'].startswith('assets/doctors/')
+              and Path(d['photo']).is_file()
+              for d in obj['doctors']
+          )
+          if photo_count < max(8, int(len(obj['doctors']) * 0.70)):
+              raise SystemExit(f'Cached doctor photos missing: {photo_count}/{len(obj["doctors"])}')
+          print('Using verified cached catalog:',len(obj['doctors']),'doctors and',photo_count,'photos')
           PY
           fi
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          obj=json.loads(Path('data/doctors.json').read_text(encoding='utf-8'))
+          photos=[d['photo'] for d in obj['doctors'] if isinstance(d.get('photo'),str) and d['photo'].startswith('assets/doctors/')]
+          missing=[p for p in photos if not Path(p).is_file()]
+          if missing:
+              raise SystemExit('Doctor photo files missing from deployment: '+str(missing[:5]))
+          print('Publishing',len(obj['doctors']),'doctors with',len(photos),'packaged photos')
+          PY
           python - <<'PY'
           from PIL import Image
           src=Image.open('icons/apple-touch-icon.png').convert('RGBA')
@@ -59,7 +75,9 @@ jobs:
       - uses: actions/cache/save@v4
         if: steps.sync.outputs.updated == 'true'
         with:
-          path: data/doctors.json
+          path: |
+            data/doctors.json
+            assets/doctors/
           key: vd-public-doctors-${{ github.run_id }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

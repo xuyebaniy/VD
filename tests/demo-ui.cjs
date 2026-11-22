@@ -10,7 +10,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const BASE = (process.env.VD_BASE_URL || 'http://127.0.0.1:8765').replace(/\/$/, '');
 const BASE_ORIGIN = new URL(BASE).origin;
-if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(BASE_ORIGIN)) throw new Error('Use a local test server, never a production URL.');
+if (!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(BASE_ORIGIN)) throw new Error('Use an HTTP local test server, never a production URL.');
 const QA_DIR = process.env.VD_QA_DIR || path.resolve(__dirname, '../../qa-demo-ui');
 const STORAGE_KEY = 'vd_cabinet_demo_v1';
 const NOTE_MISHA = 'ДЕМО_МИША_ПРОГУЛКА_ТЕСТ';
@@ -95,11 +95,17 @@ async function run() {
   const browser = await chromium.launch(launch);
   const contexts = [];
   const errors = [];
+  const workers = [];
   let passed = 0;
   const pass = value => { passed++; console.log(`PASS ${passed}: ${value}`); };
   try {
     const log = { requests: [], external: [], privateAPI: [] };
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: 'block' });
+    // Playwright 1.62.1's serviceWorkers:'block' injects an unguarded
+    // navigator.serviceWorker getter into every frame, including opaque sandbox
+    // frames. This HTTP-only suite needs no such injection: the app registers its
+    // service worker only on HTTPS. Keep both the sandbox and pageerror checks.
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    context.on('serviceworker', worker => workers.push(worker.url()));
     contexts.push(context);
     await blockExternal(context, log);
     const page = await context.newPage();
@@ -142,6 +148,7 @@ async function run() {
     await enter(page, familyA);
     await openDay(page, misha); await assertNote(page, NOTE_MISHA, 'done');
     await openDay(page, anya); await assertNote(page, NOTE_ANYA, 'partial');
+    await page.locator('#content').evaluate(element => { element.scrollTop = 0; });
     await page.screenshot({ path: path.join(QA_DIR, 'demo-diary-mobile.png'), fullPage: true });
     pass('Two children retain separate saved diaries after reload; unsaved changes stay unsaved');
 
@@ -226,10 +233,16 @@ async function run() {
     await page.locator('[data-vdd-recommendation="activity"]').fill(RECOMM_ANYA);
     await page.locator('[data-vdd-save]').click();
     await eventually(async () => (await page.locator('#content').innerText()).includes('Рекомендации сохранены'), 'Anya recommendation saved');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('#content').evaluate(element => { element.scrollTop = 0; });
     await page.screenshot({ path: path.join(QA_DIR, 'demo-doctor-mobile.png'), fullPage: true });
     await page.setViewportSize({ width: 1280, height: 900 });
+    await page.locator('#content').evaluate(element => { element.scrollTop = 0; });
     await page.screenshot({ path: path.join(QA_DIR, 'demo-doctor-desktop.png'), fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+    await page.locator('.vdd-calendar-card').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(QA_DIR, 'demo-doctor-days-desktop.png'), fullPage: true });
+    await page.locator('#content').evaluate(element => { element.scrollTop = 0; });
     await page.locator('[data-vdd="exit"]').first().click();
     await enter(page, familyA); await nav(page, 'garden');
     await page.locator(`[data-pc-child="${misha}"]`).first().click();
@@ -244,7 +257,8 @@ async function run() {
     pass('Doctor day/month dynamics match parent marks; per-child recommendations persist and reach the correct parent view');
 
     const blockedLog = { requests: [], external: [], privateAPI: [] };
-    const blockedContext = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    const blockedContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    blockedContext.on('serviceworker', worker => workers.push(worker.url()));
     contexts.push(blockedContext);
     await blockedContext.addInitScript(() => Object.defineProperty(window, 'localStorage', { configurable: true, get() { throw new DOMException('Storage disabled for demo test', 'SecurityError'); } }));
     await blockExternal(blockedContext, blockedLog);
@@ -263,6 +277,7 @@ async function run() {
     await blockedPage.screenshot({ path: path.join(QA_DIR, 'demo-storage-unavailable-mobile.png'), fullPage: true });
     pass('Unavailable storage uses temporary memory, says so visibly, and does not claim reload persistence');
 
+    assert.deepEqual(workers, [], 'The HTTP test page must not register service workers');
     assert.deepEqual(errors, [], 'No uncaught browser errors');
     pass('No uncaught browser errors across the full demo flow');
     console.log(JSON.stringify({ passed, clinicalAPIRequests: 0, realSMS: 0, screenshots: QA_DIR }, null, 2));

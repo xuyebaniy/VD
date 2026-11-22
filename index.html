@@ -802,7 +802,9 @@ async function vdStartSync(){
  VD_LIVE.catalogStatus='loading';
  try{
   const rsp=await vdFetchJson('doctors.php');
-  const list=(rsp.doctors||[]).map(d=>({id:Number(d.id),name:String(d.name||''),specialty:String(d.specialty||'Специализация уточняется'),photo:d.photo&&vdSafeUrl(d.photo)?vdSafeUrl(d.photo):null,url:d.url&&vdSafeUrl(d.url)?vdSafeUrl(d.url):null,schedule:String(d.schedule||'')})).filter(d=>Number.isInteger(d.id)&&d.id>0&&d.name.length>1);
+  if(VD_CFG.staticData&&!/^https:\/\/vash-doc\.ru\/specialists\//.test(String(rsp.source||'')))throw new Error('Public directory not yet verified');
+  VD_LIVE.updated=rsp.updated||null;
+  const list=(rsp.doctors||[]).map(d=>({id:Number(d.id),name:String(d.name||''),specialty:String(d.specialty||'Специализация уточняется'),photo:d.photo&&vdSafeUrl(d.photo)?vdSafeUrl(d.photo):(DOCTORS.find(x=>x.name===d.name)?.photo||null),url:d.url&&vdSafeUrl(d.url)?vdSafeUrl(d.url):null,schedule:String(d.schedule||'')})).filter(d=>Number.isInteger(d.id)&&d.id>0&&d.name.length>1);
   if(!list.length)throw new Error('empty catalog');
   DOCTORS.splice(0,DOCTORS.length,...list);
   if(!DOCTORS.some(d=>d.id===S.doctorId)){S.doctorId=DOCTORS[0].id;S.booking.doctorId=S.doctorId}

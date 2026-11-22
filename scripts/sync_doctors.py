@@ -33,7 +33,7 @@ TIMEOUT = 22
 
 
 def text(node):
-    return " ".join(node.stripped_strings) if node else ""
+    return " ".join(" ".join(node.stripped_strings).split()) if node else ""
 
 
 def url_for(href, image=False):

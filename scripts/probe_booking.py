@@ -2,7 +2,7 @@
 """Read-only probe for the clinic's public appointment interface and frame policy."""
 import re, requests
 from bs4 import BeautifulSoup
-urls=["https://vash-doc.ru/record.php","https://vash-doc.ru/","https://vash-doc.ru/contacts/","https://t.me/vashdoktr"]
+urls=["https://vash-doc.ru/record.php","https://api.medihost.ru/v2/ScheduleFrame/code/48196","https://vash-doc.ru/","https://t.me/vashdoktr"]
 for url in urls:
  try:
   r=requests.get(url,timeout=22,headers={'User-Agent':'Mozilla/5.0 VashDoctorApp/1.0'},allow_redirects=True)
@@ -10,6 +10,7 @@ for url in urls:
   doc=BeautifulSoup(r.text,"html.parser")
   title=doc.title.get_text(" ",strip=True) if doc.title else "(no title)"
   print("TITLE",title[:250],flush=True)
+  if "medihost.ru" in url:print("SCRIPT_BODY",re.sub(r"\\s+"," ",r.text[:4000]),flush=True)
   for link in doc.select('a[href],iframe[src],script[src],form[action]'):
    target=link.get("href") or link.get("src") or link.get("action") or ""
    desc=' '.join(link.stripped_strings)

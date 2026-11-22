@@ -22,7 +22,7 @@ const FIXTURE = `<!doctype html><html lang="ru"><meta charset="utf-8">
 <p>Эта страница не содержит расписания и не принимает заявки.</p>
 <label>Тестовый черновик <input id="fixture-booking-input" autocomplete="off"></label>
 <pre id="fixture-probe"></pre><script>
-const result = { origin: location.origin };
+const result = { origin: window.origin };
 for (const [key, read] of [
   ['parentDocument', () => parent.document.body.textContent],
   ['parentStorage', () => parent.localStorage.getItem('${MARKER_KEY}')],

@@ -1,11 +1,18 @@
 /* Vash Doctor PWA: same install/scope, offline app shell and fresh public clinic directory. */
-const VERSION='vd-shell-2026-11-22-portraits-v10';
-const DATA_CACHE='vd-public-directory-v4';
-const PRECACHE=['./','./index.html','./manifest.webmanifest','./icons/app-icon.svg','./icons/apple-touch-icon.png','./icons/icon-192.png','./icons/icon-512.png','./data/doctors.json'];
+const VERSION='vd-shell-2026-11-22-live-schedule-v12';
+const DATA_CACHE='vd-public-directory-v5';
+const PRECACHE=['./','./index.html','./manifest.webmanifest','./icons/app-icon.svg','./icons/apple-touch-icon.png','./icons/icon-192.png','./icons/icon-512.png','./data/doctors.json','./booking-widget.html','./pwa-updates.js'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(VERSION).then(async cache=>{
     const results=await Promise.allSettled(PRECACHE.map(path=>cache.add(path)));
     if(!results.some(r=>r.status==='fulfilled'))throw new Error('Offline shell not cached');
+    // Precache actual doctor portraits so every offline card retains its photo.
+    try {
+      const response=await fetch('./data/doctors.json',{cache:'no-store'});
+      const catalog=await response.json();
+      const photos=(catalog.doctors||[]).map(d=>d.photo).filter(p=>/^assets\/doctors\/[a-f0-9]{18}\.webp$/.test(p));
+      await Promise.allSettled(photos.map(path=>cache.add('./'+path)));
+    }catch(e){console.warn('Doctor portrait precache was incomplete',e)}
     await self.skipWaiting();
   }));
 });

@@ -39,6 +39,7 @@ jobs:
           vd_test_server_pid=$!
           trap 'kill "$vd_test_server_pid" 2>/dev/null || true' EXIT
           NODE_PATH="$RUNNER_TEMP/vd-ui/node_modules" VD_BASE_URL=http://127.0.0.1:8765 VD_QA_DIR="$RUNNER_TEMP/vd-cabinet-screenshots" node tests/demo-ui.cjs
+          NODE_PATH="$RUNNER_TEMP/vd-ui/node_modules" VD_BASE_URL=http://127.0.0.1:8765 VD_QA_DIR="$RUNNER_TEMP/vd-cabinet-screenshots" node tests/booking-embed.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -185,16 +185,20 @@ async function run() {
     pass('Documents and operator messaging remain honest unconnected demo sections');
 
     await nav(page, 'booking');
-    const sandbox = await page.locator('#vd-booking-frame').getAttribute('sandbox');
-    assert.ok(sandbox?.split(/\s+/).includes('allow-scripts'));
-    assert.ok(!sandbox.split(/\s+/).includes('allow-same-origin'));
+    const bookingFrame = page.locator('#vd-booking-frame');
+    const bookingUrl = new URL(await bookingFrame.getAttribute('src'), BASE + '/');
+    assert.equal(bookingUrl.href, 'https://vash-doc.ru/record.php#scheduleframe');
+    assert.notEqual(bookingUrl.origin, BASE_ORIGIN, 'Booking scripts must run on the external clinic origin');
+    const sandbox = (await bookingFrame.getAttribute('sandbox') || '').split(/\s+/);
+    for (const permission of ['allow-scripts', 'allow-forms', 'allow-same-origin', 'allow-popups', 'allow-popups-to-escape-sandbox']) assert.ok(sandbox.includes(permission), permission);
+    assert.ok(!sandbox.includes('allow-top-navigation'));
     await nav(page, 'family');
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.screenshot({ path: path.join(QA_DIR, 'demo-family-desktop.png'), fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
     await page.setViewportSize({ width: 320, height: 740 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
-    pass('Booking iframe remains isolated; family UI fits desktop and 320px screens');
+    pass('Booking uses the official external origin with sandbox; family UI fits desktop and 320px screens');
 
     await logout(page); await page.locator('[data-pc="guest"]').click(); await nav(page, 'doctors');
     await page.locator('#doctor-search').waitFor({ state: 'visible' });

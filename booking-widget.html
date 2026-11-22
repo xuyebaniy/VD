@@ -6,48 +6,27 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Запись к врачу — Ваш Доктор</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;padding:0;width:100%;background:#fffefb;color:#174431;font-family:system-ui,-apple-system,Arial,sans-serif}
-#vd-widget-state{padding:22px 14px;text-align:center;font-size:14px;color:#587261}
-#scheduleframe{width:100%;max-width:100%;min-width:0}
-#scheduleframe img{max-width:100%;height:auto}
-#scheduleframe input,#scheduleframe select,#scheduleframe button{max-width:100%}
-.vd-widget-error{border-radius:20px;margin:12px;padding:16px;background:#fff6e8;color:#77512b}
-.vd-widget-error a{color:#2b7c30}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#fffefb;color:#174431;font-family:system-ui,-apple-system,Arial,sans-serif}
+main{max-width:520px;margin:0 auto;padding:32px 20px}
+h1{font-size:26px;line-height:1.2;margin:0 0 16px}
+p{line-height:1.55;color:#587261}
+.actions{display:grid;gap:12px;margin-top:24px}
+a{display:block;padding:15px 18px;border-radius:18px;background:#347b46;color:#fff;text-align:center;font-weight:600;text-decoration:none}
+a.phone{background:#edf5e9;color:#174431}
+a:focus-visible{outline:3px solid #e28d37;outline-offset:3px}
 </style>
 </head>
 <body>
-<div id="vd-widget-state" role="status">Загружаем расписание и доступные часы клиники…</div>
-<!-- The identical public widget that is used on https://vash-doc.ru/record.php -->
-<script src="https://api.medihost.ru/v2/ScheduleFrame/code/48196"></script>
-<script>
-(function(){
-  'use strict';
-  var status=document.getElementById('vd-widget-state'),holder=document.getElementById('scheduleframe');
-  var ready=false;
-  function report(state){
-    var h=Math.max(640,Math.min(3000,document.body.scrollHeight+35));
-    if(window.parent&&window.parent!==window)window.parent.postMessage({type:'vd-medihost-widget',state:state,height:h},new URL(document.referrer||location.href).origin);
-  }
-  function check(){
-    holder=document.getElementById('scheduleframe');
-    if(!holder||!holder.children.length)return false;
-    if(!ready){ready=true;status.hidden=true;report('ready')}
-    else report('height');
-    return true;
-  }
-  var observer=new MutationObserver(check);
-  observer.observe(document.body,{childList:true,subtree:true});
-  if('ResizeObserver' in window)new ResizeObserver(function(){if(ready)report('height')}).observe(document.body);
-  setTimeout(function(){
-    if(!check()){
-      status.className='vd-widget-error';
-      status.innerHTML='<strong>Расписание временно недоступно.</strong><p>Проверьте соединение с интернетом. Записаться можно также по телефону клиники.</p><a href="https://vash-doc.ru/record.php" target="_blank" rel="noopener noreferrer">Открыть официальную онлайн-запись</a>';
-      report('unavailable');
-    }
-  },18000);
-  window.addEventListener('error',function(){if(!ready)report('loading')});
-  check();
-})();
-</script>
+<!-- Compatibility page for older links. External booking code must never run
+     on the same origin as the application's locally stored demo profiles. -->
+<main>
+  <h1>Запись на приём</h1>
+  <p>Выберите направление, врача и время приёма в расписании на официальном сайте клиники.</p>
+  <div class="actions">
+    <a href="https://vash-doc.ru/record.php#scheduleframe" target="_blank" rel="noopener noreferrer">Открыть расписание клиники</a>
+    <a class="phone" href="tel:+74842200540">Позвонить: +7 (484) 220-05-40</a>
+  </div>
+</main>
 </body>
 </html>

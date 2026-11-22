@@ -191,12 +191,17 @@ async function run() {
     pass('Documents and operator chat stay explicitly unconnected without invented clinical records');
 
     nav(env, 'booking');
-    const sandbox = q(env, '#vd-booking-frame').getAttribute('sandbox');
-    assert.ok(sandbox?.split(/\s+/).includes('allow-scripts'));
-    assert.ok(!sandbox.split(/\s+/).includes('allow-same-origin'));
+    await T.eventually(() => env.document.querySelector('#vd-booking-frame'), 'external booking frame mounted');
+    const bookingFrame = q(env, '#vd-booking-frame');
+    const bookingUrl = new URL(bookingFrame.getAttribute('src'), T.BASE + '/');
+    assert.equal(bookingUrl.href, 'https://vash-doc.ru/record.php#scheduleframe');
+    assert.notEqual(bookingUrl.origin, T.BASE_ORIGIN, 'Booking scripts must run on the external clinic origin');
+    const sandbox = (bookingFrame.getAttribute('sandbox') || '').split(/\s+/);
+    for (const permission of ['allow-scripts', 'allow-forms', 'allow-same-origin', 'allow-popups', 'allow-popups-to-escape-sandbox']) assert.ok(sandbox.includes(permission), permission);
+    assert.ok(!sandbox.includes('allow-top-navigation'));
     logout(env); click(env, '[data-pc="guest"]'); nav(env, 'doctors'); q(env, '#doctor-search');
     nav(env, 'family'); chooser(env);
-    pass('Booking keeps its sandbox; guest doctor navigation works and family route opens chooser');
+    pass('Booking declares the official external origin and sandbox; guest navigation and family chooser work');
 
     click(env, '[data-pc="demo-doctor"]');
     await T.eventually(() => env.document.querySelector('select[data-vdd-child]'), 'doctor child selector');

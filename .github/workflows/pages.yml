@@ -1,0 +1,37 @@
+name: Publish VD mobile PWA
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Generate install icons
+        run: |
+          python3 -m pip install --quiet Pillow
+          python3 - <<'PY'
+          from PIL import Image
+          import os
+          os.makedirs('icons',exist_ok=True)
+          src=Image.open('icons/apple-touch-icon.png').convert('RGBA')
+          for size in (192,512):
+              src.resize((size,size),Image.Resampling.LANCZOS).save(f'icons/icon-{size}.png')
+          PY
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

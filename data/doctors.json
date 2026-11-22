@@ -1,0 +1,295 @@
+{
+  "ok": true,
+  "updated": null,
+  "source": "prototype snapshot; not live",
+  "clinic": {
+    "phone": "+7 (484) 394-00-03",
+    "phoneHref": "+74843940003",
+    "address": "Калужская область, г. Обнинск, ул. Ленина, 188",
+    "hours": [
+      "Часы работы уточняйте по телефону"
+    ]
+  },
+  "doctors": [
+    {
+      "id": 0,
+      "name": "Комлева Анна Васильевна",
+      "specialty": "Педиатр, аллерголог-иммунолог",
+      "photo": null,
+      "url": "https://vash-doc.ru/specialists/pediatriya/komleva-anna-vasilevna/"
+    },
+    {
+      "id": 1,
+      "name": "Хашабаева Нина Владимировна",
+      "specialty": "Педиатр",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 2,
+      "name": "Дмитриева Галина Евгеньевна",
+      "specialty": "Педиатр",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 3,
+      "name": "Ильина Ирина Ивановна",
+      "specialty": "Гастроэнтеролог, врач УЗИ",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 4,
+      "name": "Султанян Наталья Николаевна",
+      "specialty": "Педиатр",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 5,
+      "name": "Маркосян Юлия Дмитриевна",
+      "specialty": "Педиатр, аллерголог-иммунолог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 6,
+      "name": "Глусцова Юлия Ивановна",
+      "specialty": "Педиатр",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 7,
+      "name": "Васильева Татьяна Леонидовна",
+      "specialty": "Педиатр",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 8,
+      "name": "Матисон Раиса Аскатовна",
+      "specialty": "Педиатр",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 9,
+      "name": "Назарочкина Оксана Васильевна",
+      "specialty": "Педиатр, инфекционист, к.м.н.",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 10,
+      "name": "Кондратьев Игорь Николаевич",
+      "specialty": "Уролог-андролог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 11,
+      "name": "Резник Елена Валентиновна",
+      "specialty": "Психолог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 12,
+      "name": "Кондрахина Елена Леонидовна",
+      "specialty": "Дерматолог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 13,
+      "name": "Аксенова (Честнова) Валентина Юрьевна",
+      "specialty": "Педиатр, дерматолог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 14,
+      "name": "Парамонов Алексей Юрьевич",
+      "specialty": "Хирург",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 15,
+      "name": "Ткаченко Ирина Леонидовна",
+      "specialty": "Дерматолог, трихолог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 16,
+      "name": "Саркисян Инна Феликсовна",
+      "specialty": "Оториноларинголог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 17,
+      "name": "Сыченкова Наталья Ивановна",
+      "specialty": "Акушер-гинеколог, к.м.н.",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 18,
+      "name": "Полежаева Майя Александровна",
+      "specialty": "Педиатр, гастроэнтеролог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 19,
+      "name": "Лучина Юлия Олеговна",
+      "specialty": "Педиатр",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 20,
+      "name": "Кадиков Владимир Иванович",
+      "specialty": "Оториноларинголог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 21,
+      "name": "Текотов Алексей Николаевич",
+      "specialty": "Хирург",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 22,
+      "name": "Першикова Ольга Николаевна",
+      "specialty": "Невролог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 23,
+      "name": "Александрова Светлана Васильевна",
+      "specialty": "Кардиолог, функциональная диагностика",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 24,
+      "name": "Мистрюкова Валерия Юрьевна",
+      "specialty": "Детский кардиолог, функциональная диагностика",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 25,
+      "name": "Безуглова Наталья Валерьевна",
+      "specialty": "Врач УЗИ",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 26,
+      "name": "Андрюшенкова Екатерина Сергеевна",
+      "specialty": "Логопед",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 27,
+      "name": "Козлов Виталий Николаевич",
+      "specialty": "Детский травматолог-ортопед",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 28,
+      "name": "Медведева Александра Александровна",
+      "specialty": "Детский кардиолог, функциональная диагностика",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 29,
+      "name": "Оглоблина Наталья Юрьевна",
+      "specialty": "Массажист",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 30,
+      "name": "Тимофеева Анна Александровна",
+      "specialty": "Терапевт, гастроэнтеролог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 31,
+      "name": "Лисицин Иван Игоревич",
+      "specialty": "Детский травматолог-ортопед",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 32,
+      "name": "Рыбина Анастасия Александровна",
+      "specialty": "Оториноларинголог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 33,
+      "name": "Зацаринина Елена Сергеевна",
+      "specialty": "Фтизиатр",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 34,
+      "name": "Абрамов Георгий Борисович",
+      "specialty": "Дерматовенеролог, трихолог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 35,
+      "name": "Акимова Жанна Эседовна",
+      "specialty": "Детский эндокринолог",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 36,
+      "name": "Денисенко Наталья Валерьевна",
+      "specialty": "Врач УЗИ",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 37,
+      "name": "Хмелевская Софья Михайловна",
+      "specialty": "Врач функциональной диагностики, УЗИ",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 38,
+      "name": "Сивых Екатерина Анатольевна",
+      "specialty": "Педиатр, детский невролог, врач физической и реабилитационной медицины",
+      "photo": null,
+      "url": null
+    },
+    {
+      "id": 39,
+      "name": "Хамдан Мохамад",
+      "specialty": "Стоматолог",
+      "url": "https://vash-doc.ru/specialists/stomatologiya/khamdan-mokhamad/",
+      "photo": null
+    }
+  ]
+}

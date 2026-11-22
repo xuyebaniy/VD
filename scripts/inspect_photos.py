@@ -28,3 +28,17 @@ def inspect(url, labels):
         print('DIAG_IMGREF',m[:160],flush=True)
 inspect(ROOT+'/specialists/', ['Комлева Анна Васильевна','Хашабаева Нина Владимировна','Дмитриева Галина Евгеньевна'])
 inspect(ROOT+'/specialists/pediatriya/komleva-anna-vasilevna/', ['Комлева Анна Васильевна'])
+
+def debug_markup(url):
+ r=requests.get(url,headers=headers,timeout=30)
+ t=r.text
+ for term in ['Комлева','Хашабаева','Дмитриева','/upload/iblock/c88/','/upload/iblock/77a/','background-image','specialists__','specialists-item','doctor-card']:
+  pos=t.find(term)
+  print('DIAG_FRAGMENT',term,'pos',pos,'text',re.sub(r'\\s+',' ',t[max(0,pos-750):pos+900])[:1800] if pos>=0 else '',flush=True)
+ d=BeautifulSoup(r.content,'html.parser')
+ for a in d.select('a[href]'):
+  if 'komleva' in a.get('href',''):
+   print('DIAG_LINK_OUTER',str(a.parent.parent)[:5000],flush=True)
+ print('DIAG_STYLE_ELEMENTS',[(x.name,str(x.get('style'))[:140]) for x in d.select('[style*=image]')][:20],flush=True)
+debug_markup(ROOT+'/specialists/')
+debug_markup(ROOT+'/specialists/pediatriya/komleva-anna-vasilevna/')

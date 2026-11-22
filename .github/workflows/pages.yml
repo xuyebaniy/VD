@@ -28,6 +28,10 @@ jobs:
           key: vd-public-doctors-${{ github.run_id }}
           restore-keys: |
             vd-public-doctors-
+      - name: Diagnose doctor-photo markup
+        run: |
+          python -m pip install --quiet requests beautifulsoup4
+          python scripts/inspect_photos.py
       - name: Fetch published doctors from clinic
         id: sync
         shell: bash

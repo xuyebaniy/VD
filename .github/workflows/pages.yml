@@ -30,6 +30,10 @@ jobs:
           key: vd-public-doctors-${{ github.run_id }}
           restore-keys: |
             vd-public-doctors-
+      - name: Check public booking widget and Telegram target (read only)
+        run: |
+          python -m pip install --quiet requests beautifulsoup4
+          python scripts/probe_booking.py
       - name: Fetch published doctors from clinic
         id: sync
         shell: bash

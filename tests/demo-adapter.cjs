@@ -94,6 +94,89 @@ async function test(name, operation) {
     assert.deepEqual(plain(demo.enter(family.id).children), []);
   });
 
+  await test('demo registration opens a parent cabinet and email login restores its children and diary after reload', async () => {
+    const {demo, storage} = createContext();
+    const legacy = demo.createFamily('Семья до регистрации');
+    const original = parentSession(demo);
+    await saveDay(demo, original.token, original.children[0].id, '2026-11-20', {sleep: 'partial'});
+    const profile = {fullName: '  Анна Демонстрационная Проверочная  ', email: '  ANNA@example.test  ', phone: '8 (900) 000-11-22'};
+    const registered = demo.registerParent(profile);
+    assert.equal(registered.account.displayName, 'Анна Демонстрационная Проверочная');
+    assert.equal(registered.account.role, 'parent');
+    assert.equal(registered.account.demo, true);
+    assert.equal(registered.account.emailVerified, false);
+    assert.equal(registered.account.phoneVerified, false);
+    assert.deepEqual(plain(registered.children), []);
+    const child = (await demo.request('children', {token: registered.token, method: 'POST', body: {name: 'Ребёнок демо'}})).child;
+    await saveDay(demo, registered.token, child.id, '2026-11-20', {water: 'done', note: 'Вымышленная запись'});
+    const saved = JSON.parse(storage.get(KEY));
+    assert.deepEqual(saved.families.find(value => value.id === registered.account.id).parent, {
+      fullName: 'Анна Демонстрационная Проверочная', email: 'anna@example.test', phone: '79000001122'
+    });
+    assert.ok(!storage.get(KEY).includes(registered.token));
+    const reloaded = createContext({storage}).demo;
+    await rejected(() => reloaded.request('me', {token: registered.token}), 'UNAUTHORIZED');
+    const restored = reloaded.loginParent(' ANNA@EXAMPLE.TEST ');
+    assert.equal(restored.account.id, registered.account.id);
+    assert.equal(restored.children[0].id, child.id);
+    assert.deepEqual(plain((await garden(reloaded, restored.token, child.id)).garden.entries['2026-11-20']), {water: 'done', note: 'Вымышленная запись'});
+    assert.equal(reloaded.enter(legacy.id).account.displayName, 'Семья до регистрации');
+    const seed = reloaded.enter(original.account.id);
+    assert.equal((await garden(reloaded, seed.token, seed.children[0].id)).garden.entries['2026-11-20'].sleep, 'partial');
+    assert.deepEqual(plain(seed.children[0].doctorIds), ['doctor_demo']);
+  });
+
+  await test('duplicate email, invalid registration and unknown login do not replace an existing family', async () => {
+    const {demo, storage} = createContext();
+    const profile = {fullName: 'Анна Демо', email: 'anna@example.test', phone: '+79000001122'};
+    const registered = demo.registerParent(profile);
+    const child = (await demo.request('children', {token: registered.token, method: 'POST', body: {name: 'Демо'}})).child;
+    await saveDay(demo, registered.token, child.id, '2026-11-20', {meal: 'done'});
+    const before = storage.get(KEY);
+    assert.throws(() => demo.registerParent({...profile, fullName: 'Другое имя', email: ' ANNA@EXAMPLE.TEST ', phone: '+79001112233'}), failure => failure.code === 'EMAIL_EXISTS');
+    assert.throws(() => demo.loginParent('missing@example.test'), failure => failure.code === 'DEMO_ACCOUNT_NOT_FOUND');
+    for (const [patch, code] of [
+      [{fullName: ''}, 'INVALID_NAME'], [{fullName: 'А'.repeat(151)}, 'INVALID_NAME'],
+      [{email: 'bad\n@example.test'}, 'INVALID_EMAIL'], [{email: 'no-email'}, 'INVALID_EMAIL'],
+      [{email: 'a..b@example.test'}, 'INVALID_EMAIL'], [{phone: '123'}, 'INVALID_PHONE'],
+      [{phone: '+79000001122\n'}, 'INVALID_PHONE']
+    ]) assert.throws(() => demo.registerParent({...profile, email: 'new@example.test', ...patch}), failure => failure.code === code);
+    assert.equal(storage.get(KEY), before);
+    assert.equal(demo.loginParent(profile.email).account.displayName, profile.fullName);
+  });
+
+  await test('registered demo parents retain family isolation and cannot acquire doctor privileges', async () => {
+    const {demo} = createContext();
+    const first = demo.registerParent({fullName: 'Первый демородитель', email: 'first@example.test', phone: '+79000001122', role: 'doctor', doctorIds: ['doctor_demo']});
+    const second = demo.registerParent({fullName: 'Второй демородитель', email: 'second@example.test', phone: '+79000002233'});
+    const child = (await demo.request('children', {token: first.token, method: 'POST', body: {name: 'Деморебёнок', doctorIds: ['doctor_demo']}})).child;
+    assert.equal(first.account.role, 'parent');
+    assert.deepEqual(plain(child.doctorIds), []);
+    await saveDay(demo, first.token, child.id, '2026-11-20', {water: 'done'});
+    await rejected(() => garden(demo, second.token, child.id), 'NOT_FOUND');
+    await rejected(() => demo.request('doctor-children', {token: first.token}), 'FORBIDDEN');
+    const doctor = demo.enterDoctor();
+    assert.equal((await demo.request('doctor-children', {token: doctor.token})).children.length, 2);
+    await rejected(() => demo.request('doctor-garden', {token: doctor.token, params: {childId: child.id}}), 'NOT_FOUND');
+  });
+
+  await test('malformed or duplicated stored parent profiles preserve the original browser data', async () => {
+    for (const mode of ['invalid', 'duplicate']) {
+      const {demo, storage} = createContext();
+      demo.registerParent({fullName: 'Анна Демо', email: 'anna@example.test', phone: '+79000001122'});
+      const saved = JSON.parse(storage.get(KEY));
+      if (mode === 'invalid') saved.families[1].parent.email = 'not-an-email';
+      else saved.families[0].parent = {...saved.families[1].parent};
+      const raw = JSON.stringify(saved);
+      storage.set(KEY, raw);
+      const reloaded = createContext({storage}).demo;
+      assert.equal(reloaded.isPersistent(), false);
+      assert.ok(reloaded.status().warning);
+      reloaded.createFamily('Временная семья');
+      assert.equal(storage.get(KEY), raw);
+    }
+  });
+
   await test('child requires only a name; optional date is validated when supplied', async () => {
     const {demo} = createContext();
     const session = parentSession(demo);

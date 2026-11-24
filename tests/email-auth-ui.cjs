@@ -98,8 +98,8 @@ async function open(options = {}) {
   instances.add(env);
   await T.eventually(() => {
     if (state.errors.length) throw new Error(state.errors.join('\n'));
-    return env.window.VDCabinetReady && env.document.readyState === 'complete' && env.document.querySelector('#pc-email-form');
-  }, 'email cabinet scripts initialize', 12000);
+    return env.window.VDCabinetReady && env.document.readyState === 'complete' && env.document.querySelector('#pc-email-form, #pc-demo-auth-form');
+  }, 'cabinet sign-in scripts initialize', 12000);
   return env;
 }
 async function close(env) {
@@ -132,16 +132,21 @@ async function run() {
   let passed = 0; const pass = label => { passed++; console.log(`PASS ${passed}: ${label}`); };
   const audited = [];
   try {
-    const disabled = await open(); audited.push(disabled);
-    assert.equal(q(disabled, '#pc-email-form fieldset').disabled, true);
-    assert.match(text(disabled), /почте.*не подключ|не подключ.*почт/i);
-    click(disabled, '[data-pc="email-intent"][data-intent="register"]');
-    assert.ok(q(disabled, '#pc-parent-name').matches(':disabled') && q(disabled, '#pc-parent-email').matches(':disabled') && q(disabled, '#pc-parent-phone').matches(':disabled'));
-    submit(disabled, '#pc-email-form');
-    assert.equal(disabled.document.querySelector('#pc-email-code-form'), null);
-    assert.equal(disabled.state.api.length, 0, 'Disabled demo must not request health, email or auth');
-    q(disabled, '[data-pc="demo-enter"]');
-    pass('Unconfigured email registration is visibly disabled; it never invents or sends an OTP');
+    const demo = await open(); audited.push(demo);
+    assert.equal(demo.document.querySelector('#pc-email-form, #pc-email-code-form'), null);
+    click(demo, '[data-pc="demo-intent"][data-intent="register"]');
+    for (const selector of ['#pc-demo-parent-name', '#pc-demo-parent-email', '#pc-demo-parent-phone']) assert.ok(!q(demo, selector).matches(':disabled'));
+    assert.match(text(demo), /демо/i);
+    assert.match(text(demo), /письм.*не отправ|без.*код|код.*не/i);
+    input(demo, '#pc-demo-parent-name', T.FAMILY_B);
+    input(demo, '#pc-demo-parent-email', T.DEMO_EMAIL_B);
+    input(demo, '#pc-demo-parent-phone', T.DEMO_PHONE_B);
+    submit(demo, '#pc-demo-auth-form');
+    await T.eventually(() => demo.document.querySelector('.pc-account'), 'demo registration enters without a code');
+    assert.equal(demo.document.querySelector('#pc-email-code-form'), null);
+    assert.ok(q(demo, '.pc-demo-notice'));
+    assert.equal(demo.state.api.length, 0, 'Local demo registration must not request health, email or auth');
+    pass('Unconfigured demo registration works locally and never invents or sends an email code');
 
     for (const config of [
       { ...CONFIG, apiUrl: 'https://untrusted-api.example.test/local/api/patient-cabinet.php' },
@@ -150,6 +155,7 @@ async function run() {
       const invalid = await open({ config }); audited.push(invalid);
       assert.equal(invalid.window.VDCabinetAPI.configured, false);
       assert.equal(q(invalid, '#pc-email-form fieldset').disabled, true);
+      assert.equal(invalid.document.querySelector('#pc-demo-auth-form, [data-pc="demo-enter"], [data-pc="demo-doctor"]'), null, 'Invalid private configuration must not downgrade to demo access');
       assert.equal(invalid.state.api.length, 0);
       assert.equal(invalid.state.external.length, 0);
     }

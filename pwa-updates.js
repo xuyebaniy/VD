@@ -132,10 +132,10 @@ if('serviceWorker' in navigator){
   if(bookingFrameIsLive())return;
   if(window.VDCabinet?.isActive()||window.VDCabinet?.isAuthenticating())return;
   if(reload)return;
-  try{if(sessionStorage.getItem('vd-reload-demo-v19')==='1')return;}catch(_){}
+  try{if(sessionStorage.getItem('vd-reload-demo-v20')==='1')return;}catch(_){}
   const input=document.activeElement;
   if(input&&/^(INPUT|TEXTAREA)$/i.test(input.tagName))return;
-  reload=true;try{sessionStorage.setItem('vd-reload-demo-v19','1');}catch(_){}
+  reload=true;try{sessionStorage.setItem('vd-reload-demo-v20','1');}catch(_){}
   window.location.reload();
  });
 }

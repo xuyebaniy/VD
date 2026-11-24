@@ -1,5 +1,5 @@
 /* Public offline shell only. Patient API, credentials and documents are never cached. */
-const VERSION = 'vd-shell-2026-11-24-demo-v19';
+const VERSION = 'vd-shell-2026-11-24-demo-v20';
 const DATA_CACHE = 'vd-public-directory-v5';
 const SHELL = [
   '', 'index.html', 'manifest.webmanifest', 'icons/app-icon.svg', 'icons/apple-touch-icon.png',

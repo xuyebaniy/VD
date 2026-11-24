@@ -18,6 +18,8 @@ const NOTE_ANYA = 'ДЕМО_АНЯ_ИГРЫ_ТЕСТ';
 const NOTE_B = 'ДЕМО_ДРУГАЯ_СЕМЬЯ_ТЕСТ';
 const UNSAVED = 'ДЕМО_НЕСОХРАНЕННЫЙ_ЧЕРНОВИК';
 const FAMILY_B = 'Тестовая демосемья Б';
+const DEMO_EMAIL_B = 'family-b@example.test';
+const DEMO_PHONE_B = '+79990002233';
 const CHILD_B = 'Тестовый ребёнок Б';
 const RECOMM_MISHA = 'ДЕМО: отмечать питание в дневнике Миши';
 const RECOMM_ANYA = 'ДЕМО: отмечать прогулки в дневнике Ани';
@@ -64,6 +66,13 @@ async function enter(page, id) {
   await page.locator('.pc-account').waitFor({ state: 'visible' });
 }
 async function logout(page) { await nav(page, 'family'); await nav(page, 'profile'); await page.locator('[data-pc="logout"]').click(); await familyChooser(page); }
+async function loginDemo(page, email) {
+  await familyChooser(page);
+  await page.locator('[data-pc="demo-intent"][data-intent="login"]').click();
+  await page.locator('#pc-demo-parent-email').fill(email);
+  await page.locator('#pc-demo-auth-form button[type="submit"]').click();
+  await page.locator('.pc-account').waitFor({ state: 'visible' });
+}
 async function childId(page, name) { return page.locator('[data-pc-child]').filter({ hasText: name }).first().getAttribute('data-pc-child'); }
 async function openDay(page, id) {
   await nav(page, 'family');
@@ -113,11 +122,14 @@ async function run() {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
     await familyChooser(page);
+    assert.equal(await page.locator('#pc-demo-parent-email').isEnabled(), true);
+    assert.equal(await page.locator('#pc-email-form, #pc-email-code-form').count(), 0, 'Unconfigured demo must offer direct local access, not a disabled real-email form');
+    assert.match(await page.locator('#pc-demo-auth-form').innerText(), /демо|письм|код/i);
     assert.equal(await page.locator('#topbar a[href="tel:+74842200540"]').count(), 1);
     const familyA = await page.locator('[data-pc="demo-enter"]').first().getAttribute('data-family-id');
     assert.ok(familyA);
     await page.screenshot({ path: path.join(QA_DIR, 'demo-family-chooser-mobile.png'), fullPage: true });
-    pass('First screen chooses a demo family without phone, OTP or API; top call remains available');
+    pass('First screen offers active demo login and a quick family chooser without OTP or API; top call remains available');
 
     await enter(page, familyA);
     const misha = await childId(page, 'Миша (демо)');
@@ -161,9 +173,11 @@ async function run() {
     pass('Two children retain separate saved diaries after reload; unsaved changes stay unsaved');
 
     await logout(page);
-    await page.locator('.pc-new-family summary').click();
-    await page.locator('#pc-demo-family-name').fill(FAMILY_B);
-    await page.locator('#pc-demo-family-form button[type="submit"]').click();
+    await page.locator('[data-pc="demo-intent"][data-intent="register"]').click();
+    await page.locator('#pc-demo-parent-name').fill(FAMILY_B);
+    await page.locator('#pc-demo-parent-email').fill(DEMO_EMAIL_B);
+    await page.locator('#pc-demo-parent-phone').fill(DEMO_PHONE_B);
+    await page.locator('#pc-demo-auth-form button[type="submit"]').click();
     await page.locator('.pc-account').waitFor({ state: 'visible' });
     assert.equal(await page.locator('[data-pc-child]').count(), 0, 'New family must start empty');
     assert.ok(!(await page.locator('#app').innerText()).includes('Миша (демо)'));
@@ -179,8 +193,11 @@ async function run() {
     const familyB = await page.locator('[data-pc="demo-enter"]').filter({ hasText: FAMILY_B }).first().getAttribute('data-family-id');
     assert.ok(familyB && familyB !== familyA);
     await enter(page, familyA); await openDay(page, misha); await assertNote(page, NOTE_MISHA, 'done');
-    await logout(page); await enter(page, familyB); await openDay(page, newChild); await assertNote(page, NOTE_B, 'done');
-    pass('A new family starts empty; name-only child creation works and family diaries stay isolated');
+    await logout(page); await loginDemo(page, DEMO_EMAIL_B.toUpperCase()); await openDay(page, newChild); await assertNote(page, NOTE_B, 'done');
+    assert.ok(!(await page.locator('#app').innerText()).includes(NOTE_MISHA), 'Demo email login must open only its own family');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await loginDemo(page, DEMO_EMAIL_B); await openDay(page, newChild); await assertNote(page, NOTE_B, 'done');
+    pass('Demo registration creates an empty family; email login and reload preserve its child and diary without mixing families');
 
     await nav(page, 'family');
     await nav(page, 'profile'); await nav(page, 'documents');
@@ -301,5 +318,5 @@ async function run() {
   } finally { for (const context of contexts) await context.close(); await browser.close(); }
 }
 
-module.exports = { BASE, BASE_ORIGIN, STORAGE_KEY, NOTE_MISHA, NOTE_ANYA, NOTE_B, UNSAVED, FAMILY_B, CHILD_B, RECOMM_MISHA, RECOMM_ANYA, today, previousMonth, isPrivateAPI, eventually };
+module.exports = { BASE, BASE_ORIGIN, STORAGE_KEY, NOTE_MISHA, NOTE_ANYA, NOTE_B, UNSAVED, FAMILY_B, DEMO_EMAIL_B, DEMO_PHONE_B, CHILD_B, RECOMM_MISHA, RECOMM_ANYA, today, previousMonth, isPrivateAPI, eventually };
 if (require.main === module) run().catch(error => { console.error(error.stack || error); process.exitCode = 1; });

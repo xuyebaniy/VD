@@ -1,7 +1,7 @@
 /*
  * «Ваш Доктор» — local demonstration data adapter, version 1.
  * No backend, SMS, OTP, medical documents, analytics or network calls.
- * The family selector is a demo convenience, NOT secure authentication.
+ * Email login and the family selector are demo conveniences, NOT secure authentication.
  * Use fictional information only: localStorage is readable on this device.
  */
 (function (global) {
@@ -15,6 +15,7 @@
   const MAX_DAYS = 800;
   const MAX_CHARS = 750000;
   const FAMILY_NAME_MAX = 60;
+  const PARENT_NAME_MAX = 150;
   const CHILD_NAME_MAX = 100;
   const NOTE_MAX = 1200;
   const RECOMMENDATION_MAX = 1200;
@@ -81,6 +82,38 @@
     }
     return result;
   }
+
+  function parentEmail(value) {
+    if (typeof value !== 'string' || value.length > 254 || /[\u0000-\u001f\u007f<>]/.test(value)) {
+      throw error('INVALID_EMAIL', 'Укажите адрес электронной почты для демовхода.');
+    }
+    const result = value.trim().toLowerCase();
+    const parts = result.split('@');
+    const local = parts[0], domain = parts[1];
+    if (parts.length !== 2 || !local || local.length > 64 || !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local) ||
+        local.startsWith('.') || local.endsWith('.') || local.includes('..') || !domain ||
+        domain.split('.').length < 2 || domain.split('.').some(label => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))) {
+      throw error('INVALID_EMAIL', 'Укажите адрес электронной почты для демовхода.');
+    }
+    return result;
+  }
+
+  function parentProfile(value) {
+    if (!object(value)) throw error('INVALID_FIELD', 'Заполните данные демокабинета родителя.');
+    let fullName;
+    try { fullName = text(value.fullName, PARENT_NAME_MAX, false, false); }
+    catch (_) { throw error('INVALID_NAME', 'Укажите ФИО родителя — до ' + PARENT_NAME_MAX + ' символов.'); }
+    const email = parentEmail(value.email);
+    if (typeof value.phone !== 'string' || value.phone.length > 32 || /[^0-9+() \t-]/.test(value.phone)) {
+      throw error('INVALID_PHONE', 'Укажите российский мобильный номер +7 9XX XXX-XX-XX.');
+    }
+    let phone = value.phone.replace(/\D/g, '');
+    if (phone.length === 11 && phone.startsWith('8')) phone = '7' + phone.slice(1);
+    if (!/^79\d{9}$/.test(phone)) throw error('INVALID_PHONE', 'Укажите российский мобильный номер +7 9XX XXX-XX-XX.');
+    return {fullName: fullName, email: email, phone: phone};
+  }
+
+  function familyName(family) { return family.parent ? family.parent.fullName : family.name; }
 
   function date(value) {
     if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value < '1900-01-01' || value > today()) {
@@ -168,6 +201,7 @@
       throw error('INVALID_STORAGE', 'Не удалось прочитать сохранённые демоданные.');
     }
     const ids = new Set();
+    const emails = new Set();
     const uniqueId = id => {
       if (!validId(id) || ids.has(id)) throw error('INVALID_STORAGE', 'Не удалось прочитать сохранённые демоданные.');
       ids.add(id);
@@ -177,6 +211,11 @@
     for (const family of saved.families) {
       if (!object(family) || !Array.isArray(family.children) || family.children.length > MAX_CHILDREN) throw error('INVALID_STORAGE', 'Не удалось прочитать демосемью.');
       const cleaned = {id: uniqueId(family.id), name: text(family.name, FAMILY_NAME_MAX, false, false), children: []};
+      if (family.parent !== undefined) {
+        cleaned.parent = parentProfile(family.parent);
+        if (emails.has(cleaned.parent.email)) throw error('INVALID_STORAGE', 'Не удалось прочитать демокабинеты.');
+        emails.add(cleaned.parent.email);
+      }
       for (const child of family.children) {
         if (!object(child) || !object(child.garden) || !object(child.garden.entries) || Object.keys(child.garden.entries).length > MAX_DAYS) {
           throw error('INVALID_STORAGE', 'Не удалось прочитать демопрофиль ребёнка.');
@@ -290,7 +329,15 @@
   }
 
   function familyView(family) {
-    return {account: {id: family.id, displayName: family.name, demo: true, role: 'parent'}, children: family.children.map(childView)};
+    const account = {id: family.id, displayName: familyName(family), demo: true, role: 'parent'};
+    if (family.parent) {
+      const parts = family.parent.email.split('@');
+      account.emailMasked = parts[0].slice(0, 1) + '•••@' + parts[1];
+      account.phoneMasked = '+7 ••• •••-' + family.parent.phone.slice(-4, -2) + '-' + family.parent.phone.slice(-2);
+      account.emailVerified = false;
+      account.phoneVerified = false;
+    }
+    return {account: account, children: family.children.map(childView)};
   }
 
   function gardenView(child, selectedMonth) {
@@ -304,7 +351,7 @@
 
   function listFamilies() {
     refresh();
-    return state.families.map(family => ({id: family.id, name: family.name}));
+    return state.families.map(family => ({id: family.id, name: familyName(family)}));
   }
 
   function createFamily(name) {
@@ -319,6 +366,28 @@
     next.families.push(family);
     persist(next);
     return {id: family.id, name: family.name};
+  }
+
+  function registerParent(input) {
+    refresh();
+    const parent = parentProfile(input);
+    if (state.families.some(family => family.parent && family.parent.email === parent.email)) {
+      throw error('EMAIL_EXISTS', 'Демокабинет с этой почтой уже есть на устройстве. Перейдите во «Вход».', 409);
+    }
+    if (state.families.length >= MAX_FAMILIES) throw error('FAMILY_LIMIT', 'В демоверсии можно создать до ' + MAX_FAMILIES + ' семей на устройстве.');
+    const family = {id: randomId('family'), name: Array.from(parent.fullName).slice(0, FAMILY_NAME_MAX).join(''), parent: parent, children: []};
+    const next = copy(state);
+    next.families.push(family);
+    persist(next);
+    return Object.assign(startSession('parent', family.id), familyView(family));
+  }
+
+  function loginParent(email) {
+    refresh();
+    const normalized = parentEmail(email);
+    const family = state.families.find(value => value.parent && value.parent.email === normalized);
+    if (!family) throw error('DEMO_ACCOUNT_NOT_FOUND', 'Демокабинет с этой почтой не найден в этом браузере. Откройте «Регистрация».', 404);
+    return Object.assign(startSession('parent', family.id), familyView(family));
   }
 
   function startSession(role, familyId, doctorId) {
@@ -369,7 +438,7 @@
         const children = [];
         for (const family of state.families) for (const child of family.children) {
           if (child.doctorIds && child.doctorIds.includes(session.doctorId)) {
-            children.push(Object.assign(childView(child), {familyId: family.id, familyName: family.name}));
+            children.push(Object.assign(childView(child), {familyId: family.id, familyName: familyName(family)}));
           }
         }
         return {children: children};
@@ -450,13 +519,15 @@
   const api = {
     listFamilies: listFamilies,
     createFamily: createFamily,
+    registerParent: registerParent,
+    loginParent: loginParent,
     enter: enter,
     enterDoctor: enterDoctor,
     request: request,
     isPersistent: () => persistent,
     status: () => ({persistent: persistent, warning: warning}),
     get persistenceAvailable() { return persistent; },
-    limits: Object.freeze({familyName: FAMILY_NAME_MAX, childName: CHILD_NAME_MAX, note: NOTE_MAX, recommendation: RECOMMENDATION_MAX, families: MAX_FAMILIES, children: MAX_CHILDREN})
+    limits: Object.freeze({familyName: FAMILY_NAME_MAX, parentName: PARENT_NAME_MAX, childName: CHILD_NAME_MAX, note: NOTE_MAX, recommendation: RECOMMENDATION_MAX, families: MAX_FAMILIES, children: MAX_CHILDREN})
   };
   Object.defineProperty(global, 'VDDemo', {value: Object.freeze(api), writable: false, configurable: false, enumerable: true});
 })(window);

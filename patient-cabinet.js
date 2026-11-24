@@ -7,6 +7,7 @@
   const Demo = window.VDDemo;
   const Remote = window.VDCabinetAPI;
   const remoteConfigured = !!(Remote && Remote.configured);
+  const demoEnabled = !remoteConfigured && !(window.VDCabinetConfig && window.VDCabinetConfig.apiUrl) && !(Remote && Remote.configurationIssue);
   const PHONE = 'tel:+74842200540';
   const PRIVATE = new Set(['family', 'profile', 'garden', 'garden-day', 'documents', 'bookings', 'add-child', 'doctor-cabinet']);
   const RELATIONS = {mother:'Мама', father:'Папа', grandmother:'Бабушка', grandfather:'Дедушка', guardian:'Законный представитель'};
@@ -25,6 +26,7 @@
   };
   const auth = {intent:'login',step:'details',form:{email:'',fullName:'',phone:''},challenge:null,
     busy:false,health:'idle',error:'',notice:'',retryAt:0,generation:0};
+  const demoAuth = {intent:'login',form:{email:'',fullName:'',phone:''},error:''};
   let retryTimer = null;
   let doctorView = null;
 
@@ -78,6 +80,7 @@
     const token = state.token, adapter = realSession() ? Remote : Demo;
     cleanPrivateState();
     resetAuth();
+    resetDemoAuth();
     state.authError = ''; state.authNotice = message || '';
     S.page = 'auth';
     try {history.replaceState({}, '', '#auth');} catch (_) {}
@@ -109,6 +112,43 @@
   }
   function loading(text) { return '<div class="pc-loading" role="status">' + esc(text) + '</div>'; }
   function publicAccess() { return '<button type="button" class="pc-guest" data-pc="guest">Врачи и запись без входа</button>'; }
+
+  function resetDemoAuth() {
+    demoAuth.intent='login';demoAuth.form={email:'',fullName:'',phone:''};demoAuth.error='';
+  }
+  function demoEntry() {
+    const registering=demoAuth.intent==='register';
+    return '<section class="plain-card pc-auth-form pc-email-entry"><span class="pc-demo-label">Кабинет родителя · демо</span><h2>Вход и регистрация</h2>' +
+      '<div class="pc-email-tabs" role="group" aria-label="Вход или регистрация"><button type="button" data-pc="demo-intent" data-intent="login" aria-pressed="' + !registering + '">Вход</button><button type="button" data-pc="demo-intent" data-intent="register" aria-pressed="' + registering + '">Регистрация</button></div>' +
+      '<p class="pc-help" id="pc-demo-auth-help">' + (registering ? 'Укажите вымышленные ФИО, почту и телефон. После регистрации можно добавить детей.' : 'Введите почту, указанную при деморегистрации. Вход без пароля и кода.') + ' Письма и СМС не отправляются.</p>' +
+      '<form id="pc-demo-auth-form" aria-describedby="pc-demo-auth-help"><fieldset class="pc-email-fields"' + (!Demo ? ' disabled' : '') + '>' +
+      (registering ? '<label class="pc-label" for="pc-demo-parent-name">ФИО родителя</label><input class="pc-input" id="pc-demo-parent-name" name="fullName" type="text" autocomplete="off" maxlength="150" value="' + esc(demoAuth.form.fullName) + '" placeholder="Например, Анна Демонстрационная" required>' : '') +
+      '<label class="pc-label" for="pc-demo-parent-email">Электронная почта</label><input class="pc-input" id="pc-demo-parent-email" name="email" type="email" autocomplete="off" maxlength="254" value="' + esc(demoAuth.form.email) + '" placeholder="anna@example.test" required>' +
+      (registering ? '<label class="pc-label" for="pc-demo-parent-phone">Телефон</label><input class="pc-input" id="pc-demo-parent-phone" name="phone" type="tel" autocomplete="off" maxlength="24" value="' + esc(demoAuth.form.phone) + '" placeholder="+7 900 000-00-00" required>' : '') +
+      '<p class="pc-help">Демокабинет и дневники сохраняются только в этом браузере.</p>' + status(demoAuth.error,'error') + status(state.authError,'error') + status(state.authNotice) +
+      '<button class="btn btn-green btn-wide" type="submit">' + (registering ? 'Зарегистрироваться в демоверсии' : 'Войти в демокабинет') + '</button></fieldset></form></section>';
+  }
+  function openDemoSession(result, doctor) {
+    cleanPrivateState();
+    state.token=result.token;state.expiresAt=expiresMillis(result.expiresAt);state.account=result.account;
+    useChildren(result.children);resetDemoAuth();
+    state.authError='';state.authNotice='';
+    go(doctor ? 'doctor-cabinet' : 'family');
+  }
+  function submitDemoAuth(form) {
+    if (!Demo || !demoEnabled || state.busy || active()) return;
+    const fields=new FormData(form);
+    demoAuth.form.email=String(fields.get('email') || '').trim();
+    if(demoAuth.intent==='register') {
+      demoAuth.form.fullName=String(fields.get('fullName') || '').trim();
+      demoAuth.form.phone=String(fields.get('phone') || '').trim();
+    }
+    demoAuth.error='';state.authError='';state.authNotice='';
+    try {
+      const result=demoAuth.intent==='register' ? Demo.registerParent(demoAuth.form) : Demo.loginParent(demoAuth.form.email);
+      openDemoSession(result,false);
+    } catch(error) {demoAuth.error=errorMessage(error,'Не удалось открыть демокабинет. Попробуйте ещё раз.');render({keepScroll:true});}
+  }
 
   function resetAuth() {
     auth.generation++; auth.step='details'; auth.challenge=null; auth.busy=false;
@@ -199,43 +239,30 @@
   }
 
   function renderAuth() {
-    const families = Demo ? Demo.listFamilies() : [];
+    const families = demoEnabled && Demo ? Demo.listFamilies() : [];
     return '<section class="pc-auth" data-pc-view="auth">' +
-      '<div class="pc-auth-intro"><div><span class="eyebrow">Ваш Доктор' + (remoteConfigured ? '' : ' · Демоверсия') + '</span>' +
+      '<div class="pc-auth-intro"><div><span class="eyebrow">Ваш Доктор' + (demoEnabled ? ' · Демоверсия' : '') + '</span>' +
       '<h1>Забота о детях<br>начинается с семьи</h1><p>Кабинет родителя и отдельный сад здоровья для каждого ребёнка.</p></div>' +
-      '<img src="' + asset('family-hero.webp') + '" alt=""></div>' + emailEntry() +
-      (remoteConfigured ? status(state.authError,'error') + status(state.authNotice) :
-      '<section class="plain-card pc-auth-form"><span class="pc-demo-label">Кабинет родителя</span><h2>Выберите демосемью</h2>' +
-      '<p class="pc-help">Родитель добавляет детей и ведёт их дневники. Отдельная регистрация ребёнку не нужна.</p>' +
+      '<img src="' + asset('family-hero.webp') + '" alt=""></div>' + (demoEnabled ? demoEntry() : emailEntry()) +
+      (!demoEnabled ? status(state.authError,'error') + status(state.authNotice) :
+      '<section class="plain-card pc-auth-form"><span class="pc-demo-label">Сохранённые демосемьи</span><h2>Быстрый вход</h2>' +
+      '<p class="pc-help">Можно сразу открыть готовую демосемью с двумя детьми или вернуться в свою.</p>' +
       families.map(f => '<button type="button" class="btn btn-green btn-wide pc-family-enter" data-pc="demo-enter" data-family-id="' + esc(f.id) + '">' + icon('users','ic-sm') + 'Открыть: ' + esc(f.name) + '</button>').join('') +
-      '<details class="pc-new-family"><summary>Создать свою демосемью</summary><form id="pc-demo-family-form">' +
-      '<label class="pc-label" for="pc-demo-family-name">Название семьи</label><input class="pc-input" id="pc-demo-family-name" name="name" type="text" maxlength="60" autocomplete="off" placeholder="Например, Семья Андрея" required>' +
-      '<button class="btn btn-white btn-wide" type="submit">Создать демосемью</button></form></details>' +
-      status(state.authError,'error') + status(state.authNotice) + '</section>') +
+      '</section>') +
       '<section class="plain-card pc-doctor-entry"><div><span class="pc-demo-label">Кабинет врача</span><h2>Динамика сада здоровья</h2><p>Посмотрите отметки детей по дням и месяцам и задайте индивидуальные рекомендации.</p></div>' +
       '<p class="pc-help">Отдельный вход по СМС подключим позже. Врач видит только прикреплённых детей.</p>' +
-      (remoteConfigured ? '' : '<button type="button" class="btn btn-tint btn-wide" data-pc="demo-doctor">Открыть демокабинет врача ' + icon('arrow','ic-sm') + '</button>') + '</section>' +
-      (remoteConfigured ? '' : demoNotice() + (Demo ? '' : status('Модуль демоверсии не загрузился. Откройте приложение с интернетом ещё раз.','error'))) + publicAccess() + '</section>';
+      (!demoEnabled ? '' : '<button type="button" class="btn btn-tint btn-wide" data-pc="demo-doctor">Открыть демокабинет врача ' + icon('arrow','ic-sm') + '</button>') + '</section>' +
+      (!demoEnabled ? '' : demoNotice() + (Demo ? '' : status('Модуль демоверсии не загрузился. Откройте приложение с интернетом ещё раз.','error'))) + publicAccess() + '</section>';
   }
   function enterDemo(familyId, doctor) {
-    if (state.busy || !Demo || remoteConfigured) return;
+    if (state.busy || !Demo || !demoEnabled) return;
     try {
       const result = doctor ? Demo.enterDoctor() : Demo.enter(familyId);
-      cleanPrivateState();
-      state.token = result.token; state.expiresAt = expiresMillis(result.expiresAt); state.account = result.account;
-      useChildren(result.children);
-      state.authError = ''; state.authNotice = '';
-      go(doctor ? 'doctor-cabinet' : 'family');
+      openDemoSession(result,doctor);
     } catch (error) {
       state.authError = errorMessage(error,'Не удалось открыть демоверсию.');
       render({keepScroll:true});
     }
-  }
-  function createDemoFamily(form) {
-    if (!Demo || remoteConfigured) return;
-    const input = form.querySelector('#pc-demo-family-name');
-    try {const family = Demo.createFamily(String(input.value || '').trim());enterDemo(family.id,false);}
-    catch (error) {state.authError = errorMessage(error,'Не удалось создать демосемью.');render({keepScroll:true});}
   }
   function childPicker() {
     if (state.children.length < 2) return '';
@@ -476,18 +503,20 @@
     }
   };
   window.VDCabinetReady = true;
-  window.VDCabinet = Object.freeze({isActive:active,isAuthenticating:()=>auth.busy||auth.step==='code'});
+  window.VDCabinet = Object.freeze({isActive:active,isAuthenticating:()=>auth.busy||auth.step==='code'||demoEnabled&&Object.values(demoAuth.form).some(value=>value.trim())});
 
   document.addEventListener('input', function (event) {
     const authField={'pc-parent-email':'email','pc-parent-name':'fullName','pc-parent-phone':'phone'}[event.target.id];
     if(authField)auth.form[authField]=event.target.value;
+    const demoField={'pc-demo-parent-email':'email','pc-demo-parent-name':'fullName','pc-demo-parent-phone':'phone'}[event.target.id];
+    if(demoField)demoAuth.form[demoField]=event.target.value;
     if (event.target.id === 'pc-day-note' && active() && !isDoctor()) {const draft = currentDraft();draft.note = event.target.value.slice(0,1200);draft._noteDirty = true;}
   });
   document.addEventListener('submit', function (event) {
     const id = event.target.id;
-    if (!['pc-demo-family-form','pc-child-form','pc-day-form','pc-email-form','pc-email-code-form'].includes(id)) return;
+    if (!['pc-demo-auth-form','pc-child-form','pc-day-form','pc-email-form','pc-email-code-form'].includes(id)) return;
     event.preventDefault(); event.stopImmediatePropagation();
-    if (id === 'pc-demo-family-form') createDemoFamily(event.target);
+    if (id === 'pc-demo-auth-form') submitDemoAuth(event.target);
     if (id === 'pc-child-form' && !isDoctor()) addChild(event.target);
     if (id === 'pc-day-form' && !isDoctor()) saveDayPrivate(event.target);
     if (id === 'pc-email-form') requestEmailCode(event.target);
@@ -512,7 +541,8 @@
     const legacyGarden = ['open-today','stickers','save-day','login','add-member'].includes(d.action) || d.month != null || d.gardenDate != null || d.cycleMember != null;
     if (!d.pc && d.pcChild == null && d.pcMark == null && !legacyGarden) return;
     event.preventDefault(); event.stopImmediatePropagation();
-    if (d.pc === 'guest') {resetAuth();state.authError = '';state.authNotice = '';go('home');return;}
+    if (d.pc === 'guest') {resetAuth();resetDemoAuth();state.authError = '';state.authNotice = '';go('home');return;}
+    if(d.pc==='demo-intent'){if(!demoEnabled)return;demoAuth.intent=d.intent==='register'?'register':'login';demoAuth.error='';state.authError='';state.authNotice='';render({keepScroll:true});return;}
     if(d.pc==='email-intent'){if(auth.busy)return;auth.intent=d.intent==='register'?'register':'login';auth.error='';auth.notice='';render({keepScroll:true});return;}
     if(d.pc==='email-health'){auth.health='idle';render({keepScroll:true});return;}
     if(d.pc==='email-resend'){requestEmailCode(null);return;}

@@ -106,6 +106,13 @@ async function enter(env, id) {
   await T.eventually(() => env.document.querySelector('.pc-account'), 'demo family entered');
 }
 function logout(env) { nav(env, 'family'); nav(env, 'profile'); click(env, '[data-pc="logout"]'); chooser(env); }
+async function loginDemo(env, email) {
+  chooser(env);
+  click(env, '[data-pc="demo-intent"][data-intent="login"]');
+  input(env, '#pc-demo-parent-email', email);
+  submit(env, '#pc-demo-auth-form');
+  await T.eventually(() => env.document.querySelector('.pc-account'), 'demo email login opens family');
+}
 async function openDay(env, id) {
   nav(env, 'family'); click(env, `[data-pc-child="${id}"]`); nav(env, 'garden');
   await T.eventually(() => env.document.querySelector('[data-action="open-today"]'), 'garden loaded');
@@ -132,10 +139,12 @@ async function run() {
   try {
     let env = await open(); audited.push(env.state);
     chooser(env);
+    assert.ok(!q(env, '#pc-demo-parent-email').matches(':disabled'));
+    assert.equal(env.document.querySelector('#pc-email-form, #pc-email-code-form'), null);
     const familyA = familyId(env);
     assert.ok(familyA);
     q(env, '#topbar a[href="tel:+74842200540"]');
-    pass('First screen is a usable demo family chooser; no phone/OTP forms; top call exists');
+    pass('First screen offers active local demo login and quick families without a real email/OTP form; top call exists');
 
     await enter(env, familyA);
     const misha = findChild(env, 'Миша (демо)'), anya = findChild(env, 'Аня (демо)');
@@ -172,9 +181,15 @@ async function run() {
     pass('Reload preserves separate diaries for two children and discards an unsaved replacement draft');
 
     logout(env);
-    click(env, '.pc-new-family summary');
-    input(env, '#pc-demo-family-name', T.FAMILY_B);
-    submit(env, '#pc-demo-family-form');
+    input(env, '#pc-demo-parent-email', 'not-registered@example.test');
+    submit(env, '#pc-demo-auth-form');
+    q(env, '[data-pc-view="auth"] [role="alert"]');
+    assert.equal(env.document.querySelector('.pc-account'), null, 'Unknown demo email must not open a different family');
+    click(env, '[data-pc="demo-intent"][data-intent="register"]');
+    input(env, '#pc-demo-parent-name', T.FAMILY_B);
+    input(env, '#pc-demo-parent-email', T.DEMO_EMAIL_B);
+    input(env, '#pc-demo-parent-phone', T.DEMO_PHONE_B);
+    submit(env, '#pc-demo-auth-form');
     await T.eventually(() => env.document.querySelector('.pc-account'), 'new family entered');
     assert.equal(env.document.querySelector('[data-pc-child]'), null);
     assert.ok(!text(env).includes('Миша (демо)') && !text(env).includes('Аня (демо)'));
@@ -187,8 +202,27 @@ async function run() {
     logout(env);
     const familyB = familyId(env, T.FAMILY_B); assert.ok(familyB && familyB !== familyA);
     await enter(env, familyA); await openDay(env, misha); note(env, T.NOTE_MISHA, 'done');
-    logout(env); await enter(env, familyB); await openDay(env, childB); note(env, T.NOTE_B, 'done');
-    pass('New family is empty; name-only child creation works and switching families keeps records isolated');
+    logout(env); await loginDemo(env, T.DEMO_EMAIL_B.toUpperCase());
+    await openDay(env, childB); note(env, T.NOTE_B, 'done');
+    assert.ok(!text(env).includes(T.NOTE_MISHA), 'Email login must not reveal another family diary');
+    env = await reload(env); audited.push(env.state);
+    await loginDemo(env, T.DEMO_EMAIL_B); await openDay(env, childB); note(env, T.NOTE_B, 'done');
+    pass('Demo registration creates an empty family; case-insensitive email login and reload preserve its own child and daily checks');
+
+    logout(env);
+    const familiesBeforeDuplicate = JSON.parse(rawStore(env)).families.length;
+    click(env, '[data-pc="demo-intent"][data-intent="register"]');
+    input(env, '#pc-demo-parent-name', 'Другая Тестовая Фамилия');
+    input(env, '#pc-demo-parent-email', T.DEMO_EMAIL_B.toUpperCase());
+    input(env, '#pc-demo-parent-phone', '+79990004455');
+    submit(env, '#pc-demo-auth-form');
+    q(env, '[data-pc-view="auth"] [role="alert"]');
+    assert.equal(env.document.querySelector('.pc-account'), null, 'Duplicate email must not overwrite and enter an existing profile');
+    assert.equal(JSON.parse(rawStore(env)).families.length, familiesBeforeDuplicate);
+    await loginDemo(env, T.DEMO_EMAIL_B);
+    assert.ok(q(env, '.pc-account').textContent.includes(T.FAMILY_B));
+    await openDay(env, childB); note(env, T.NOTE_B, 'done');
+    pass('Duplicate demo registration preserves the existing parent, child and diary instead of replacing them');
 
     nav(env, 'family'); nav(env, 'profile'); nav(env, 'documents');
     await T.eventually(() => /не подключ|демо|демонстрац/i.test(q(env, '#content').textContent), 'documents unconnected notice');

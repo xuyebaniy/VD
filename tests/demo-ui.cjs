@@ -82,7 +82,8 @@ async function saveNote(page, note, mark = 'done') {
 }
 async function assertNote(page, note, mark) {
   assert.equal(await page.locator('#pc-day-note').inputValue(), note);
-  if (mark) assert.equal(await page.locator(`[data-pc-mark="meal"][data-pc-value="${mark}"]`).getAttribute('aria-pressed'), 'true');
+  if (mark === 'done') assert.equal(await page.locator('input[type="checkbox"][data-pc-mark="meal"][data-pc-value="done"]').isChecked(), true);
+  else if (mark) assert.equal(await page.locator(`button[data-pc-mark="meal"][data-pc-value="${mark}"]`).getAttribute('aria-pressed'), 'true');
 }
 async function storage(page) { return page.evaluate(key => localStorage.getItem(key) || '', STORAGE_KEY); }
 
@@ -127,6 +128,13 @@ async function run() {
     await assertNote(page, '');
     await page.locator('#pc-day-note').fill(NOTE_MISHA);
     await page.locator('[data-pc-mark="meal"][data-pc-value="done"]').click();
+    assert.equal(await page.locator('input[type="checkbox"][data-pc-mark="meal"][data-pc-value="done"]').isChecked(), true);
+    await page.locator('[data-pc-mark="meal"][data-pc-value="done"]').click();
+    assert.equal(await page.locator('input[type="checkbox"][data-pc-mark="meal"][data-pc-value="done"]').isChecked(), false, 'A second click removes the completed mark');
+    await page.locator('[data-pc-mark="meal"][data-pc-value="partial"]').click();
+    assert.equal(await page.locator('input[type="checkbox"][data-pc-mark="meal"][data-pc-value="done"]').isChecked(), false);
+    await page.locator('[data-pc-mark="meal"][data-pc-value="done"]').click();
+    assert.equal(await page.locator('button[data-pc-mark="meal"][data-pc-value="partial"]').getAttribute('aria-pressed'), 'false', 'Completed and partial are mutually exclusive');
     assert.equal(await page.locator('#pc-day-note').inputValue(), NOTE_MISHA);
     assert.ok(!(await storage(page)).includes(NOTE_MISHA), 'Draft must not be persisted before Save');
     await page.locator('#pc-day-form button[type="submit"]').click();
@@ -136,7 +144,7 @@ async function run() {
 
     await openDay(page, anya);
     await assertNote(page, '');
-    assert.equal(await page.locator('[data-pc-mark="meal"][data-pc-value="done"]').getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.locator('input[type="checkbox"][data-pc-mark="meal"][data-pc-value="done"]').isChecked(), false);
     await saveNote(page, NOTE_ANYA, 'partial');
     await openDay(page, misha);
     await assertNote(page, NOTE_MISHA, 'done');
@@ -208,6 +216,10 @@ async function run() {
 
     await page.locator('[data-pc="demo-doctor"]').click();
     await page.locator('select[data-vdd-child]').waitFor({ state: 'visible' });
+    const doctorChildren = await page.locator('select[data-vdd-child] option').evaluateAll(options => options.map(option => option.value).sort());
+    assert.deepEqual(doctorChildren, [misha, anya].sort(), 'Doctor must only see explicitly attached children');
+    assert.ok(!doctorChildren.includes(newChild));
+    assert.ok(!(await page.locator('#content').innerText()).includes(CHILD_B) && !(await page.locator('#content').innerText()).includes(NOTE_B), 'Unattached child identity and diary must not leak to doctor UI');
     await page.locator('select[data-vdd-child]').selectOption(misha);
     await eventually(async () => (await page.locator('[data-vdd-month-percent]').innerText()) === '100%', 'Misha real diary percentage');
     assert.equal(await page.locator(`[data-vdd-date="${today()}"] .vdd-day-score`).innerText(), '100%');
@@ -255,10 +267,11 @@ async function run() {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('[data-pc="demo-doctor"]').click();
     await page.locator('select[data-vdd-child]').waitFor({ state: 'visible' });
+    assert.equal(await page.locator(`select[data-vdd-child] option[value="${newChild}"]`).count(), 0, 'Reload must not grant a doctor access to an unattached child');
     await page.locator('select[data-vdd-child]').selectOption(anya);
     await eventually(async () => (await page.locator('[data-vdd-recommendation="activity"]').inputValue()) === RECOMM_ANYA, 'recommendation after reload');
     assert.equal(await page.locator('[data-vdd-recommendation="meal"]').inputValue(), '');
-    pass('Doctor day/month dynamics match parent marks; per-child recommendations persist and reach the correct parent view');
+    pass('Doctor only sees attached children; day/month dynamics and per-child recommendations persist for the correct parent view');
 
     const blockedLog = { requests: [], external: [], privateAPI: [] };
     const blockedContext = await browser.newContext({ viewport: { width: 390, height: 844 } });

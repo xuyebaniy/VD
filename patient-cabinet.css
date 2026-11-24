@@ -68,6 +68,18 @@
 .pc-marks button[aria-pressed=true]{background:#ddf3b9;border-color:#8fbe57;color:#315f25;font-weight:600}
 .pc-marks button[data-pc-value=partial][aria-pressed=true]{background:#ffedbc;border-color:#d4af56;color:#735518}
 .pc-marks button[data-pc-value=missed][aria-pressed=true]{background:#f0eee8;border-color:#b3b6ac;color:#596254}
+.pc-done-check{display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid #e3e8d7;border-radius:13px;background:#f8f9f2;min-height:44px;font-size:11px;color:#4c614b;padding:8px 4px;cursor:pointer}
+.pc-done-check input{width:18px;height:18px;margin:0;accent-color:#518e2a;flex:none}
+.pc-done-check.is-checked{background:#ddf3b9;border-color:#8fbe57;color:#315f25;font-weight:600}
+.pc-done-check:focus-within{outline:2px solid #568c31;outline-offset:2px}
+.pc-email-entry{margin-bottom:15px}.pc-email-fields{margin:0;padding:0;border:0;min-width:0}
+.pc-email-tabs{display:flex;gap:6px;margin-top:13px;background:#f0f5e8;padding:4px;border-radius:15px}
+.pc-email-tabs button{flex:1;min-height:40px;border:0;border-radius:11px;background:transparent;color:#547044;font:inherit;font-size:13px}
+.pc-email-tabs button[aria-pressed=true]{background:#fff;box-shadow:0 2px 6px #486a1820;color:#315f25;font-weight:600}
+.pc-email-actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:13px}
+.pc-email-actions .linkmore{font-size:12px;min-height:36px}
+.pc-email-fields:disabled .btn{opacity:.55;cursor:default}
+.pc-day-progress{min-height:18px}
 .pc-diary-date{width:100%;min-height:44px;margin:8px 0 12px;border:1px solid #dce6ce;border-radius:16px;padding:9px 12px;background:#fff;color:var(--forest);font-size:16px}
 .pc-doc{display:flex;align-items:center;gap:12px;padding:15px;border:1.5px solid white;background:#fffefa;border-radius:22px;margin:10px 0;box-shadow:var(--shadow)}
 .pc-doc>.ic{color:#58a789;width:29px;height:29px}

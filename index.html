@@ -882,6 +882,8 @@ if(VD_CFG.apiBase&&location.protocol!=='file:')vdStartSync();
  if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.warn));
 })();
 </script>
+<script src="./cabinet-config.js" defer></script>
+<script src="./cabinet-api.js" defer></script>
 <script src="./pwa-updates.js" defer></script>
 <script src="./cabinet-demo.js" defer></script>
 <script src="./doctor-cabinet.js" defer></script>

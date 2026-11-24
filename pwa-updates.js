@@ -4,9 +4,12 @@
 'use strict';
 if(typeof PAGES==='undefined'||typeof S==='undefined'||typeof render!=='function')return;
 const CLINIC_PHONE='tel:+74842200540';
-// This local-only demo intentionally trusts the clinic's official Medihost
-// scripts on its own origin. Sandbox is not a parent-storage boundary here.
-const CLINIC_BOOKING_URL=new URL('./booking-widget.html',location.href).href;
+// The local demo trusts the official widget on its own origin. A configured
+// private cabinet requires a separate public widget origin; no patient data is
+// passed between them, only the parent's public origin for height/status messages.
+const bookingUrl=new URL(window.VDCabinetAPI?.configured ? window.VDCabinetAPI.bookingWidgetUrl : './booking-widget.html',location.href);
+if(bookingUrl.origin!==location.origin)bookingUrl.searchParams.set('parentOrigin',location.origin);
+const CLINIC_BOOKING_URL=bookingUrl.href;
 const widgetHtml=()=> (
   '<h1 class="page-title">Запись на приём</h1>'+
   '<div id="vd-booking-notice" style="margin:8px 3px">'+
@@ -73,7 +76,7 @@ function mountBookingFrame(){
 }
 window.addEventListener('message',function(event){
  const view=bookingView,data=event.data;
- if(!view||!view.frame||!view.mount.isConnected||event.origin!==location.origin||event.source!==view.frame.contentWindow)return;
+ if(!view||!view.frame||!view.mount.isConnected||event.origin!==bookingUrl.origin||event.source!==view.frame.contentWindow)return;
  if(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).length!==3)return;
  if(data.type!=='vd-medihost-widget'||!bookingStates.has(data.state)||!Number.isInteger(data.height)||data.height<120||data.height>3000)return;
  if(!Object.keys(data).every(key=>['type','state','height'].includes(key)))return;
@@ -127,12 +130,12 @@ if('serviceWorker' in navigator){
  let reload=false;
  navigator.serviceWorker.addEventListener('controllerchange',function(){
   if(bookingFrameIsLive())return;
-  if(window.VDCabinet?.isActive())return;
+  if(window.VDCabinet?.isActive()||window.VDCabinet?.isAuthenticating())return;
   if(reload)return;
-  try{if(sessionStorage.getItem('vd-reload-demo-v18')==='1')return;}catch(_){}
+  try{if(sessionStorage.getItem('vd-reload-demo-v19')==='1')return;}catch(_){}
   const input=document.activeElement;
   if(input&&/^(INPUT|TEXTAREA)$/i.test(input.tagName))return;
-  reload=true;try{sessionStorage.setItem('vd-reload-demo-v18','1');}catch(_){}
+  reload=true;try{sessionStorage.setItem('vd-reload-demo-v19','1');}catch(_){}
   window.location.reload();
  });
 }

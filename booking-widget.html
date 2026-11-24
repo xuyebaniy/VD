@@ -33,6 +33,14 @@ html,body{margin:0;background:#fffefb;color:#174431;font-family:system-ui,-apple
     const notice=document.getElementById('vd-widget-notice');
     const status=document.getElementById('vd-widget-status');
     const retry=document.getElementById('vd-widget-retry');
+    let parentOrigin=location.origin;
+    try{
+      const supplied=new URLSearchParams(location.search).get('parentOrigin');
+      if(supplied){
+        const target=new URL(supplied);
+        if(target.origin===supplied&&(target.protocol==='https:'||target.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(target.hostname)))parentOrigin=target.origin;
+      }
+    }catch(_){}
     const messages={loading:'Загрузка расписания…',slow:'Расписание загружается дольше обычного.',offline:'Нет подключения к интернету.',error:'Не удалось загрузить расписание.',ready:'',empty:''};
     let phase='loading',seenContent=false,queued=false,ajaxObserved=false,lastReport='';
     function report(){
@@ -42,7 +50,7 @@ html,body{margin:0;background:#fffefb;color:#174431;font-family:system-ui,-apple
       const signature=status.dataset.state+':'+height;
       if(signature===lastReport)return;
       lastReport=signature;
-      if(parent!==window&&location.origin!=='null')parent.postMessage({type:'vd-medihost-widget',state:status.dataset.state,height:height},location.origin);
+      if(parent!==window&&location.origin!=='null')parent.postMessage({type:'vd-medihost-widget',state:status.dataset.state,height:height},parentOrigin);
     }
     function show(next){
       phase=next;

@@ -121,7 +121,8 @@ async function saveNote(env, note, mark = 'done') {
 }
 function note(env, expected, mark) {
   assert.equal(q(env, '#pc-day-note').value, expected);
-  if (mark) assert.equal(q(env, `[data-pc-mark="meal"][data-pc-value="${mark}"]`).getAttribute('aria-pressed'), 'true');
+  if (mark === 'done') assert.equal(q(env, 'input[type="checkbox"][data-pc-mark="meal"][data-pc-value="done"]').checked, true);
+  else if (mark) assert.equal(q(env, `button[data-pc-mark="meal"][data-pc-value="${mark}"]`).getAttribute('aria-pressed'), 'true');
 }
 
 async function run() {
@@ -142,6 +143,13 @@ async function run() {
     await openDay(env, misha); note(env, '');
     input(env, '#pc-day-note', T.NOTE_MISHA);
     click(env, '[data-pc-mark="meal"][data-pc-value="done"]');
+    assert.equal(q(env, 'input[type="checkbox"][data-pc-mark="meal"][data-pc-value="done"]').checked, true);
+    click(env, '[data-pc-mark="meal"][data-pc-value="done"]');
+    assert.equal(q(env, 'input[type="checkbox"][data-pc-mark="meal"][data-pc-value="done"]').checked, false, 'A second click removes the completed mark');
+    click(env, '[data-pc-mark="meal"][data-pc-value="partial"]');
+    assert.equal(q(env, 'input[type="checkbox"][data-pc-mark="meal"][data-pc-value="done"]').checked, false);
+    click(env, '[data-pc-mark="meal"][data-pc-value="done"]');
+    assert.equal(q(env, 'button[data-pc-mark="meal"][data-pc-value="partial"]').getAttribute('aria-pressed'), 'false', 'Completed and partial are mutually exclusive');
     assert.equal(q(env, '#pc-day-note').value, T.NOTE_MISHA);
     assert.ok(!rawStore(env).includes(T.NOTE_MISHA), 'Unsaved draft leaked to persistent storage');
     submit(env, '#pc-day-form');
@@ -150,7 +158,7 @@ async function run() {
     pass('Note survives mark re-render and only explicit Save persists the day');
 
     await openDay(env, anya); note(env, '');
-    assert.equal(q(env, '[data-pc-mark="meal"][data-pc-value="done"]').getAttribute('aria-pressed'), 'false');
+    assert.equal(q(env, 'input[type="checkbox"][data-pc-mark="meal"][data-pc-value="done"]').checked, false);
     await saveNote(env, T.NOTE_ANYA, 'partial');
     await openDay(env, misha); note(env, T.NOTE_MISHA, 'done');
     input(env, '#pc-day-note', T.UNSAVED);
@@ -205,6 +213,10 @@ async function run() {
 
     click(env, '[data-pc="demo-doctor"]');
     await T.eventually(() => env.document.querySelector('select[data-vdd-child]'), 'doctor child selector');
+    const doctorChildren = [...q(env, 'select[data-vdd-child]').options].map(option => option.value).sort();
+    assert.deepEqual(doctorChildren, [misha, anya].sort(), 'Doctor must only see explicitly attached children');
+    assert.ok(!doctorChildren.includes(childB));
+    assert.ok(!q(env, '#content').textContent.includes(T.CHILD_B) && !q(env, '#content').textContent.includes(T.NOTE_B), 'Unattached child identity and diary must not leak to doctor UI');
     input(env, 'select[data-vdd-child]', misha, 'change');
     await T.eventually(() => env.document.querySelector('[data-vdd-month-percent]')?.textContent === '100%', 'Misha monthly percentage');
     assert.equal(q(env, `[data-vdd-date="${T.today()}"] .vdd-day-score`).textContent, '100%');
@@ -240,10 +252,11 @@ async function run() {
     env = await reload(env); audited.push(env.state);
     click(env, '[data-pc="demo-doctor"]');
     await T.eventually(() => env.document.querySelector('select[data-vdd-child]'), 'doctor returns after reload');
+    assert.equal(q(env, 'select[data-vdd-child]').querySelector(`option[value="${childB}"]`), null, 'Reload must not grant a doctor access to an unattached child');
     input(env, 'select[data-vdd-child]', anya, 'change');
     await T.eventually(() => env.document.querySelector('[data-vdd-recommendation="activity"]')?.value === T.RECOMM_ANYA, 'Anya recommendation persisted');
     assert.equal(q(env, '[data-vdd-recommendation="meal"]').value, '');
-    pass('Doctor day/month statistics reflect actual marks; separate recommendations persist and appear for the correct child');
+    pass('Doctor only sees attached children; day/month statistics and separate recommendations persist for the correct child');
 
     let temporary = await open({ blockedStorage: true }); audited.push(temporary.state);
     chooser(temporary);

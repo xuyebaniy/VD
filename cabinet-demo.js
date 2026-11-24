@@ -18,6 +18,8 @@
   const CHILD_NAME_MAX = 100;
   const NOTE_MAX = 1200;
   const RECOMMENDATION_MAX = 1200;
+  const DEMO_DOCTOR_ID = 'doctor_demo';
+  const DEMO_DOCTOR_NAME = 'Врач (демо)';
   const MARKS = ['meal', 'water', 'activity', 'sleep', 'screen', 'mood'];
   const RELATIONS = ['parent', 'mother', 'father', 'grandmother', 'grandfather', 'guardian'];
   const SESSION_MS = 24 * 60 * 60 * 1000;
@@ -149,6 +151,18 @@
     return result;
   }
 
+  function doctorIds(value, familyId, childId) {
+    if (value === undefined) {
+      // Preserve the original two demo patients when upgrading v1 storage.
+      // Other existing and all newly created profiles start without a doctor.
+      return familyId === 'family_demo' && ['child_misha_demo', 'child_anya_demo'].includes(childId) ? [DEMO_DOCTOR_ID] : [];
+    }
+    if (!Array.isArray(value) || value.length > 16 || value.some(id => !validId(id)) || new Set(value).size !== value.length) {
+      throw error('INVALID_STORAGE', 'Не удалось прочитать прикрепление к врачу.');
+    }
+    return value.slice();
+  }
+
   function validate(saved) {
     if (!object(saved) || saved.version !== VERSION || !Array.isArray(saved.families) || saved.families.length < 1 || saved.families.length > MAX_FAMILIES) {
       throw error('INVALID_STORAGE', 'Не удалось прочитать сохранённые демоданные.');
@@ -169,6 +183,7 @@
         }
         const cleanChild = {id: uniqueId(child.id), name: text(child.name, CHILD_NAME_MAX, false, false), birthDate: optionalBirthDate(child.birthDate),
           relationship: relationship(child.relationship), garden: {entries: {}, updatedAt: timestamp(child.garden.updatedAt)},
+          doctorIds: doctorIds(child.doctorIds, family.id, child.id),
           recommendations: child.recommendations === undefined ? {} : recommendations(child.recommendations),
           recommendationsUpdatedAt: timestamp(child.recommendationsUpdatedAt)};
         for (const day of Object.keys(child.garden.entries)) {
@@ -185,8 +200,8 @@
 
   function seed() {
     return {version: VERSION, families: [{id: 'family_demo', name: 'Демосемья', children: [
-      {id: 'child_misha_demo', name: 'Миша (демо)', birthDate: '2020-06-15', relationship: 'mother', garden: {entries: {}, updatedAt: null}},
-      {id: 'child_anya_demo', name: 'Аня (демо)', birthDate: '2023-02-09', relationship: 'mother', garden: {entries: {}, updatedAt: null}}
+      {id: 'child_misha_demo', name: 'Миша (демо)', birthDate: '2020-06-15', relationship: 'mother', doctorIds: [DEMO_DOCTOR_ID], garden: {entries: {}, updatedAt: null}},
+      {id: 'child_anya_demo', name: 'Аня (демо)', birthDate: '2023-02-09', relationship: 'mother', doctorIds: [DEMO_DOCTOR_ID], garden: {entries: {}, updatedAt: null}}
     ]}]};
   }
 
@@ -267,7 +282,11 @@
   }
 
   function childView(child) {
-    return {id: child.id, name: child.name, birthDate: child.birthDate, relationship: child.relationship, linkStatus: 'demo'};
+    const ids = (child.doctorIds || []).slice();
+    return {id: child.id, name: child.name, birthDate: child.birthDate, relationship: child.relationship, linkStatus: 'demo',
+      doctorIds: ids,
+      doctorAssignment: {status: ids.length ? 'assigned' : 'unassigned',
+        doctors: ids.map(id => ({id: id, displayName: id === DEMO_DOCTOR_ID ? DEMO_DOCTOR_NAME : 'Лечащий врач'}))}};
   }
 
   function familyView(family) {
@@ -302,12 +321,12 @@
     return {id: family.id, name: family.name};
   }
 
-  function startSession(role, familyId) {
+  function startSession(role, familyId, doctorId) {
     for (const [token, session] of sessions) if (session.expiresAt <= Date.now()) sessions.delete(token);
     // Sessions exist only in this JavaScript runtime, never in browser persistence.
     const token = randomId('demo_session');
     const expiresAt = Date.now() + SESSION_MS;
-    sessions.set(token, {role: role, familyId: familyId || null, expiresAt: expiresAt});
+    sessions.set(token, {role: role, familyId: familyId || null, doctorId: doctorId || null, expiresAt: expiresAt});
     while (sessions.size > 16) sessions.delete(sessions.keys().next().value);
     return {token: token, expiresAt: new Date(expiresAt).toISOString()};
   }
@@ -320,16 +339,16 @@
 
   function enterDoctor() {
     refresh();
-    return Object.assign(startSession('doctor', null), {
-      account: {id: 'doctor_demo', displayName: 'Врач (демо)', demo: true, role: 'doctor'}, children: []
+    return Object.assign(startSession('doctor', null, DEMO_DOCTOR_ID), {
+      account: {id: DEMO_DOCTOR_ID, displayName: DEMO_DOCTOR_NAME, demo: true, role: 'doctor'}, children: []
     });
   }
 
-  function anyDemoChild(childId, source) {
+  function assignedDemoChild(childId, doctorId, source) {
     if (!validId(childId)) throw error('NOT_FOUND', 'Демопрофиль ребёнка не найден.', 404);
     for (const family of (source || state).families) {
       const child = family.children.find(value => value.id === childId);
-      if (child) return child;
+      if (child && child.doctorIds && child.doctorIds.includes(doctorId)) return child;
     }
     throw error('NOT_FOUND', 'Демопрофиль ребёнка не найден.', 404);
   }
@@ -349,19 +368,22 @@
       if (action === 'doctor-children' && method === 'GET') {
         const children = [];
         for (const family of state.families) for (const child of family.children) {
-          children.push(Object.assign(childView(child), {familyId: family.id, familyName: family.name}));
+          if (child.doctorIds && child.doctorIds.includes(session.doctorId)) {
+            children.push(Object.assign(childView(child), {familyId: family.id, familyName: family.name}));
+          }
         }
         return {children: children};
       }
-      if (action === 'doctor-garden' && method === 'GET') return gardenView(anyDemoChild(params.childId), month(params.month));
+      if (action === 'doctor-garden' && method === 'GET') return gardenView(assignedDemoChild(params.childId, session.doctorId), month(params.month));
       if (action === 'doctor-recommendations' && method === 'PUT') {
+        assignedDemoChild(params.childId, session.doctorId);
         const body = opts.body;
         if (!object(body) || !object(body.recommendations)) throw error('INVALID_RECOMMENDATION', 'Заполните индивидуальные рекомендации.');
         // Validate the whole change before applying any field; diary entries are not writable through this route.
         const supplied = body.recommendations;
         const clean = recommendations(supplied);
         const next = copy(state);
-        const child = anyDemoChild(params.childId, next);
+        const child = assignedDemoChild(params.childId, session.doctorId, next);
         const updated = Object.assign({}, child.recommendations || {});
         for (const key of Object.keys(supplied)) {
           if (owns(clean, key)) updated[key] = clean[key];
@@ -381,7 +403,7 @@
       if (!object(body)) throw error('INVALID_CHILD', 'Заполните демопрофиль ребёнка.');
       if (family.children.length >= MAX_CHILDREN) throw error('CHILD_LIMIT', 'В одной демосемье можно создать до ' + MAX_CHILDREN + ' профилей.');
       const child = {id: randomId('child'), name: text(body.name, CHILD_NAME_MAX, false, false), birthDate: optionalBirthDate(body.birthDate),
-        relationship: relationship(body.relationship), garden: {entries: {}, updatedAt: null}};
+        relationship: relationship(body.relationship), doctorIds: [], garden: {entries: {}, updatedAt: null}};
       const next = copy(state);
       familyForToken(opts.token, next).children.push(child);
       persist(next);
@@ -395,7 +417,10 @@
       if (!object(body)) throw error('INVALID_ENTRY', 'Проверьте отметки дневника.');
       const day = date(body.date);
       const changes = entry(body.entry, true);
-      childForFamily(family, params.childId);
+      const ownedChild = childForFamily(family, params.childId);
+      if (ownedChild.birthDate && day < ownedChild.birthDate) {
+        throw error('INVALID_DATE', 'День дневника не может быть раньше даты рождения ребёнка.');
+      }
       const next = copy(state);
       const child = childForFamily(familyForToken(opts.token, next), params.childId);
       const existing = owns(child.garden.entries, day) ? child.garden.entries[day] : {};

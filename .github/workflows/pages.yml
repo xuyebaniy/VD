@@ -27,7 +27,18 @@ jobs:
         run: |
           node tests/demo-adapter.cjs
           node tests/demo-stats.cjs
+          node tests/cabinet-api.cjs
           node tests/cabinet-cache.cjs
+      - name: Prepare clinic API security test runtime
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, curl, openssl
+          coverage: none
+      - name: Verify email codes and server access boundaries without sending mail
+        run: |
+          php integration/patient-cabinet/tests/security.php
+          python3 integration/patient-cabinet/tests/http_security.py php
       - name: Install browser test runtime
         run: |
           npm install --prefix "$RUNNER_TEMP/vd-ui" --no-audit --no-fund --ignore-scripts playwright@1.62.1
@@ -123,11 +134,14 @@ jobs:
       - name: Validate cabinet scripts and stage public files only
         run: |
           node --check cabinet-demo.js
+          node --check cabinet-config.js
+          node --check cabinet-api.js
           node --check doctor-cabinet.js
           node --check patient-cabinet.js
           node --check pwa-updates.js
           node --check sw.js
           python scripts/stage_public.py
+          python3 tests/clinic-build.py
       - name: Install generated artifact test runtime
         run: npm install --prefix "$RUNNER_TEMP/vd-dom" --no-audit --no-fund --ignore-scripts jsdom@26.1.0
       - name: Verify generated Pages artifact before upload
@@ -154,6 +168,7 @@ jobs:
           console.log(`Generated artifact: ${scripts.length} inline scripts parse successfully`);
           JS
           node tests/demo-dom.cjs
+          node tests/email-auth-ui.cjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

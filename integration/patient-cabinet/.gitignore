@@ -1,0 +1,6 @@
+config.php
+*.sqlite
+*.sqlite-*
+*.db
+*.log
+__pycache__/

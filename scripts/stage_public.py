@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "_site"
 FILES = [
     "index.html", "manifest.webmanifest", "sw.js", "booking-widget.html",
-    "pwa-updates.js", "cabinet-demo.js", "doctor-cabinet.js", "doctor-cabinet.css",
+    "pwa-updates.js", "cabinet-config.js", "cabinet-api.js", "cabinet-demo.js", "doctor-cabinet.js", "doctor-cabinet.css",
     "patient-cabinet.js", "patient-cabinet.css", ".nojekyll",
     "data/doctors.json",
 ]

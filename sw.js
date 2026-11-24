@@ -1,10 +1,10 @@
 /* Public offline shell only. Patient API, credentials and documents are never cached. */
-const VERSION = 'vd-shell-2026-11-22-demo-v18';
+const VERSION = 'vd-shell-2026-11-24-demo-v19';
 const DATA_CACHE = 'vd-public-directory-v5';
 const SHELL = [
   '', 'index.html', 'manifest.webmanifest', 'icons/app-icon.svg', 'icons/apple-touch-icon.png',
   'icons/icon-192.png', 'icons/icon-512.png', 'data/doctors.json', 'booking-widget.html',
-  'pwa-updates.js', 'cabinet-demo.js', 'doctor-cabinet.js', 'doctor-cabinet.css', 'patient-cabinet.js', 'patient-cabinet.css'
+  'pwa-updates.js', 'cabinet-config.js', 'cabinet-api.js', 'cabinet-demo.js', 'doctor-cabinet.js', 'doctor-cabinet.css', 'patient-cabinet.js', 'patient-cabinet.css'
 ];
 const SCOPE = new URL(self.registration.scope);
 function publicPath(url) {
@@ -26,7 +26,7 @@ self.addEventListener('install', event => {
       if (!cacheable(response)) throw new Error('Public shell unavailable: ' + path);
       await cache.put(url,response);
     }));
-    for (const required of ['', 'index.html', 'cabinet-demo.js', 'doctor-cabinet.js', 'doctor-cabinet.css', 'patient-cabinet.js', 'patient-cabinet.css']) {
+    for (const required of ['', 'index.html', 'cabinet-config.js', 'cabinet-api.js', 'cabinet-demo.js', 'doctor-cabinet.js', 'doctor-cabinet.css', 'patient-cabinet.js', 'patient-cabinet.css']) {
       if (results[SHELL.indexOf(required)].status !== 'fulfilled') throw new Error('Required shell missing: ' + required);
     }
     try {

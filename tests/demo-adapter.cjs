@@ -85,6 +85,10 @@ async function test(name, operation) {
     assert.deepEqual(session.children.map(child => child.name).sort().join('|'), 'Аня (демо)|Миша (демо)');
     for (const child of session.children) {
       assert.deepEqual(plain((await garden(demo, session.token, child.id)).garden.entries), {});
+      assert.deepEqual(plain(child.doctorIds), ['doctor_demo']);
+      assert.deepEqual(plain(child.doctorAssignment), {
+        status: 'assigned', doctors: [{id: 'doctor_demo', displayName: 'Врач (демо)'}]
+      });
     }
     const family = demo.createFamily('Вторая демосемья');
     assert.deepEqual(plain(demo.enter(family.id).children), []);
@@ -97,6 +101,8 @@ async function test(name, operation) {
     assert.equal(added.child.name, 'Андрей');
     assert.equal(added.child.birthDate, '');
     assert.equal(added.child.relationship, 'parent');
+    assert.deepEqual(plain(added.child.doctorIds), []);
+    assert.deepEqual(plain(added.child.doctorAssignment), {status: 'unassigned', doctors: []});
     await rejected(() => demo.request('children', {token: session.token, method: 'POST', body: {
       name: 'Тест', birthDate: '2026-11-23'
     }}), 'INVALID_DATE');
@@ -132,6 +138,8 @@ async function test(name, operation) {
     assert.deepEqual(plain(response.garden.entries['2026-11-20']), {meal: 'done'});
     assert.deepEqual(plain(response.garden.entries['2026-11-21']), {sleep: 'partial'});
     await rejected(() => saveDay(demo, parent.token, child, '2026-11-23', {meal: 'done'}), 'INVALID_DATE');
+    await rejected(() => saveDay(demo, parent.token, child, '2019-01-01', {meal: 'done'}), 'INVALID_DATE');
+    assert.deepEqual(plain((await garden(demo, parent.token, child, '2019-01')).garden.entries), {});
   });
 
   await test('persisted family and diary survive reload while sessions do not', async () => {
@@ -183,13 +191,82 @@ async function test(name, operation) {
     const doctor = demo.enterDoctor();
     assert.equal(doctor.account.role, 'doctor');
     const all = await demo.request('doctor-children', {token: doctor.token});
-    assert.equal(all.children.length, 3);
-    assert.equal(all.children.find(value => value.id === extraChild.id).familyId, extraParent.account.id);
+    assert.equal(all.children.length, 2);
+    assert.equal(all.children.some(value => value.id === extraChild.id), false);
+    assert.equal(all.children.find(value => value.id === child).familyId, parent.account.id);
     await rejected(() => demo.request('doctor-children', {token: parent.token}), 'FORBIDDEN');
     await rejected(() => demo.request('doctor-recommendations', {token: parent.token, method: 'PUT', params: {childId: child}, body: {recommendations: {meal: 'Тест'}}}), 'FORBIDDEN');
     await rejected(() => demo.request('me', {token: doctor.token}), 'FORBIDDEN');
     await rejected(() => saveDay(demo, doctor.token, child, '2026-11-20', {meal: 'missed'}), 'FORBIDDEN');
     await rejected(() => demo.request('children', {token: doctor.token, method: 'POST', body: {name: 'Нельзя'}}), 'FORBIDDEN');
+  });
+
+  await test('doctor cannot list, read or change unassigned children, including another child in an assigned family', async () => {
+    const {demo, storage} = createContext();
+    const parent = parentSession(demo), doctor = demo.enterDoctor();
+    const extraParent = demo.enter(demo.createFamily('Ещё одна семья').id);
+    const children = [];
+    for (const owner of [parent, extraParent]) {
+      const result = await demo.request('children', {token: owner.token, method: 'POST', body: {
+        name: 'Без прикрепления', doctorIds: ['doctor_demo'], doctorAssignment: {status: 'assigned'}
+      }});
+      assert.deepEqual(plain(result.child.doctorIds), [], 'A parent cannot assign a doctor through child creation');
+      children.push(result.child.id);
+      await saveDay(demo, owner.token, result.child.id, '2026-11-20', {water: 'partial'});
+    }
+    const before = storage.get(KEY);
+    for (const childId of [...children, 'unknown_child']) {
+      await rejected(() => demo.request('doctor-garden', {token: doctor.token, params: {childId, month: '2026-11'}}), 'NOT_FOUND');
+      await rejected(() => demo.request('doctor-recommendations', {token: doctor.token, method: 'PUT', params: {childId},
+        body: {recommendations: {water: 'Недопустимое изменение'}}}), 'NOT_FOUND');
+    }
+    assert.equal(storage.get(KEY), before, 'Denied access must not alter entries or recommendations');
+    const visible = await demo.request('doctor-children', {token: doctor.token});
+    assert.deepEqual(visible.children.map(value => value.id).sort().join('|'), 'child_anya_demo|child_misha_demo');
+  });
+
+  await test('v1 migration preserves diary and recommendations and assigns only the original seed profiles', async () => {
+    const {demo, storage} = createContext();
+    const parent = parentSession(demo), childId = parent.children[0].id, doctor = demo.enterDoctor();
+    await saveDay(demo, parent.token, childId, '2026-11-20', {water: 'done', note: 'Сохранить при обновлении'});
+    await demo.request('doctor-recommendations', {token: doctor.token, method: 'PUT', params: {childId},
+      body: {recommendations: {water: 'Ранее сохранённая рекомендация'}}});
+    const added = await demo.request('children', {token: parent.token, method: 'POST', body: {name: 'Новый ребёнок'}});
+    const legacy = JSON.parse(storage.get(KEY));
+    for (const family of legacy.families) for (const child of family.children) delete child.doctorIds;
+    storage.set(KEY, JSON.stringify(legacy));
+    const reloaded = createContext({storage}).demo;
+    const restored = parentSession(reloaded), restoredDoctor = reloaded.enterDoctor();
+    const data = await garden(reloaded, restored.token, childId);
+    assert.deepEqual(plain(data.garden.entries['2026-11-20']), {water: 'done', note: 'Сохранить при обновлении'});
+    assert.equal(data.garden.recommendations.water, 'Ранее сохранённая рекомендация');
+    assert.deepEqual(plain(restored.children.find(child => child.id === added.child.id).doctorIds), []);
+    assert.equal((await reloaded.request('doctor-children', {token: restoredDoctor.token})).children.length, 2);
+    const migrated = JSON.parse(storage.get(KEY));
+    assert.deepEqual(migrated.families[0].children.find(child => child.id === childId).doctorIds, ['doctor_demo']);
+    assert.deepEqual(migrated.families[0].children.find(child => child.id === added.child.id).doctorIds, []);
+  });
+
+  await test('assignment removal and another doctor are enforced for an already open session', async () => {
+    const {demo, storage} = createContext();
+    const parent = parentSession(demo), doctor = demo.enterDoctor();
+    const stored = JSON.parse(storage.get(KEY));
+    stored.families[0].children[0].doctorIds = [];
+    stored.families[0].children[1].doctorIds = ['doctor_other'];
+    storage.set(KEY, JSON.stringify(stored));
+    assert.equal((await demo.request('doctor-children', {token: doctor.token})).children.length, 0);
+    const before = storage.get(KEY);
+    for (const child of parent.children) {
+      await rejected(() => demo.request('doctor-garden', {token: doctor.token, doctorId: 'doctor_other',
+        params: {childId: child.id, month: '2026-11', doctorId: 'doctor_other'}}), 'NOT_FOUND');
+      await rejected(() => demo.request('doctor-recommendations', {token: doctor.token, method: 'PUT',
+        params: {childId: child.id, doctorId: 'doctor_other'}, body: {doctorId: 'doctor_other', recommendations: {water: 'Нельзя'}}}), 'NOT_FOUND');
+    }
+    assert.equal(storage.get(KEY), before);
+    const reloaded = createContext({storage}).demo;
+    assert.equal((await reloaded.request('doctor-children', {token: reloaded.enterDoctor().token})).children.length, 0,
+      'An explicit empty assignment must never be reattached by migration');
+    assert.equal((await demo.request('me', {token: parent.token})).children.length, 2, 'Parents still see their own children');
   });
 
   await test('individual recommendations persist and never mutate the parental diary', async () => {

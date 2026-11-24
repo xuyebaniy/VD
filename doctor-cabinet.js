@@ -97,6 +97,7 @@
 
   function mount(host, options) {
     if (!host || typeof host.addEventListener !== 'function' || !options || typeof options.api !== 'function') throw new TypeError('Doctor view requires a host and an API adapter');
+    const demoMode = options.mode !== 'remote';
     let disposed = false, version = 0;
     const drafts = new Map();
     const state = {children:[], selectedChildId:null, month:today().slice(0,7), garden:null,
@@ -126,19 +127,19 @@
       return drafts.get(childId);
     }
     function heading() {
-      return '<header class="vdd-hero"><div class="vdd-hero-top"><span class="vdd-badge">Демонстрация</span>' +
+      return '<header class="vdd-hero"><div class="vdd-hero-top"><span class="vdd-badge">' + (demoMode ? 'Демонстрация' : 'Врач') + '</span>' +
         '<button type="button" class="vdd-text-button" data-vdd="exit">Выйти</button></div>' +
-        '<h1>Кабинет врача</h1><p>Отметки семей и индивидуальный план для каждого ребёнка.</p>' +
-        '<div class="vdd-local">На этом устройстве · семьи из этого браузера</div></header>';
+        '<h1>Кабинет врача</h1><p>Дневники прикреплённых детей и индивидуальные рекомендации.</p>' +
+        '<div class="vdd-local">' + (demoMode ? 'На этом устройстве · только прикреплённые дети' : 'Прикреплённые пациенты') + '</div></header>';
     }
     function selection() {
       const families = new Set(state.children.map(child => child.familyId || child.familyName || '')).size;
-      return '<section class="vdd-card vdd-select-card"><div class="vdd-section-line"><h2>Выберите ребёнка</h2>' +
+      return '<section class="vdd-card vdd-select-card"><div class="vdd-section-line"><h2>' + (demoMode ? 'Прикреплённые дети' : 'Прикреплённые пациенты') + '</h2>' +
         '<button type="button" class="vdd-text-button" data-vdd="refresh"' + (state.loading || state.saving ? ' disabled' : '') + '>Обновить</button></div>' +
         '<label class="vdd-sr-only" for="vdd-child">Ребёнок и семья</label><select id="vdd-child" data-vdd-child' + (state.saving ? ' disabled' : '') + '>' +
         state.children.map(child => '<option value="' + escape(child.id) + '"' + (child.id === state.selectedChildId ? ' selected' : '') + '>' +
           escape(child.name) + ' · ' + escape(child.familyName || 'Семья') + '</option>').join('') + '</select>' +
-        '<p class="vdd-help">Профилей детей: ' + state.children.length + ' · Семей: ' + families + '</p></section>';
+        '<p class="vdd-help">Прикреплено детей: ' + state.children.length + ' · Семей: ' + families + '</p></section>';
     }
     function monthNavigation() {
       const blocked = state.saving;
@@ -205,9 +206,9 @@
       if (disposed) return;
       let html = '<div class="vdd-root">' + heading() + message(storageWarning(),'storage') + message(state.error,'error') + message(state.notice,'success');
       if (!state.children.length) {
-        html += state.loading ? '<div class="vdd-loading" role="status">Загружаем семьи…</div>' :
-          '<section class="vdd-card vdd-empty"><div class="vdd-empty-symbol" aria-hidden="true">＋</div><h2>Пока нет профилей детей</h2>' +
-          '<p>Создайте ребёнка через вход для родителей, отметьте привычки в его саду и вернитесь в кабинет врача.</p>' +
+        html += state.loading ? '<div class="vdd-loading" role="status">Загружаем прикреплённых детей…</div>' :
+          '<section class="vdd-card vdd-empty"><div class="vdd-empty-symbol" aria-hidden="true">＋</div><h2>Нет прикреплённых детей</h2>' +
+          '<p>Здесь появятся дневники детей, прикреплённых к этому врачу. Создание профиля родителем не открывает врачу доступ автоматически.</p>' +
           '<button type="button" class="vdd-primary" data-vdd="exit">К выбору входа</button>' +
           '<button type="button" class="vdd-text-button" data-vdd="refresh">Обновить список</button></section>';
       } else {
